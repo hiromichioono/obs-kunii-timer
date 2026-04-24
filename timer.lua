@@ -56,12 +56,12 @@ function script_properties()
     if sources ~= nil then
         for _, source in ipairs(sources) do
             local id = obs.obs_source_get_unversioned_id(source)
-            if id == "text_ft2_source" or id == "text_gdiplus" then
+            if id == "text_ft2_source" then
                 local name = obs.obs_source_get_name(source)
                 obs.obs_property_list_add_string(p, name, name)
             end
         end
-        obs.obs_source_list_release(sources)
+        obs.source_list_release(sources)
     end
 
     obs.obs_properties_add_button(props, "start_button", "キックオフ / 再開", function()
