@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>Chat Overlay</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html body {
+      background: transparent;
+      margin: 0;
+      overflow: hidden;
+      font-family: sans-serif;
+    }
+
+    #app {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 16px;
+      pointer-events: none;
+      user-select: none;
+    }
+
+    /* KUNII METHOD ロゴ（右上） */
+    #logo {
+      align-self: flex-end;
+      padding: 4px 12px;
+      border-radius: 8px;
+      font-size: 11px;
+      font-weight: bold;
+      letter-spacing: 0.15em;
+      color: #60d0ff;
+      background: rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(6px);
+      border: 1px solid rgba(96, 208, 255, 0.3);
+      text-shadow: 0 0 10px rgba(96, 208, 255, 0.8);
+    }
+
+    /* チャットエリア（右下） */
+    #chat-area {
+      align-self: flex-end;
+      width: 320px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* メッセージカード */
+    .message {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 12px;
+      margin-bottom: 8px;
+      background: rgba(0, 0, 0, 0.55);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      animation: slideIn 0.35s ease-out forwards;
+    }
+
+    .author {
+      font-size: 13px;
+      font-weight: bold;
+      white-space: nowrap;
+      color: #60d0ff;
+      text-shadow: 0 0 8px rgba(96, 208, 255, 0.6);
+    }
+
+    .text {
+      font-size: 13px;
+      color: #ffffff;
+      line-height: 1.4;
+      word-break: break-all;
+    }
+
+    /* 接続ステータス */
+    #status {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      justify-content: flex-end;
+      margin-top: 4px;
+    }
+
+    #status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+
+    #status-label {
+      font-size: 11px;
+    }
+
+    .connected    { background: #4ade80; box-shadow: 0 0 6px #4ade80; }
+    .disconnected { background: #f87171; box-shadow: 0 0 6px #f87171; }
+    .label-on  { color: #4ade80; }
+    .label-off { color: #f87171; }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateX(60px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div id="logo">KUNII METHOD</div>
+    <div id="chat-area">
+      <div id="messages"></div>
+      <div id="status">
+        <div id="status-dot" class="disconnected"></div>
+        <span id="status-label" class="label-off">OFFLINE</span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const WS_URL      = "ws://localhost:8765";
+    const MAX_MESSAGES = 6;
+
+    const messagesEl   = document.getElementById("messages");
+    const statusDot    = document.getElementById("status-dot");
+    const statusLabel  = document.getElementById("status-label");
+
+    let reconnectTimer = null;
+
+    function setStatus(online) {
+      statusDot.className   = online ? "connected"  : "disconnected";
+      statusLabel.className = online ? "label-on"   : "label-off";
+      statusLabel.textContent = online ? "LIVE" : "OFFLINE";
+    }
+
+    function addMessage(author, text) {
+      const card = document.createElement("div");
+      card.className = "message";
+      card.innerHTML =
+        `<span class="author">${escapeHtml(author)}</span>` +
+        `<span class="text">${escapeHtml(text)}</span>`;
+      messagesEl.appendChild(card);
+
+      // 最大件数を超えたら古いものを削除
+      while (messagesEl.children.length > MAX_MESSAGES) {
+        messagesEl.removeChild(messagesEl.firstChild);
+      }
+    }
+
+    function escapeHtml(str) {
+      return str
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    function connect() {
+      const ws = new WebSocket(WS_URL);
+
+      ws.onopen = () => {
+        setStatus(true);
+        clearTimeout(reconnectTimer);
+      };
+
+      ws.onmessage = (e) => {
+        try {
+          const data = JSON.parse(e.data);
+          addMessage(data.author, data.message);
+        } catch (_) {}
+      };
+
+      ws.onclose = () => {
+        setStatus(false);
+        reconnectTimer = setTimeout(connect, 3000);
+      };
+
+      ws.onerror = () => ws.close();
+    }
+
+    connect();
+  </script>
+</body>
+</html>
