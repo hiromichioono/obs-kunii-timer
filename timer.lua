@@ -6,8 +6,8 @@ start_time     = nil  -- タイマー開始時の os.time()
 offset_seconds = 0    -- 一時停止前までの累積秒数
 sync_minutes   = 0    -- 同期する分
 sync_seconds   = 0    -- 同期する秒
-blink_state         = true -- 点滅状態（true = コロンあり）
-status_source_name  = ""   -- ステータス表示ソース名
+blink_state        = true -- 点滅状態（true = コロンあり）
+status_source_name = ""   -- ステータス表示ソース名
 
 -- 表示の更新 (00:00 形式)
 function update_text()
@@ -89,7 +89,9 @@ function script_properties()
     local props = obs.obs_properties_create()
     local p = obs.obs_properties_add_list(props, "source_name", "表示するテキストソース", obs.OBS_COMBO_TYPE_EDITABLE, obs.OBS_COMBO_FORMAT_STRING)
 
-    -- テキストソースの一覧を取得
+    local p2 = obs.obs_properties_add_list(props, "status_source_name", "ステータスのテキストソース", obs.OBS_COMBO_TYPE_EDITABLE, obs.OBS_COMBO_FORMAT_STRING)
+
+    -- テキストソースの一覧を取得（両ドロップダウンに一括で追加）
     local sources = obs.obs_enum_sources()
     if sources ~= nil then
         for _, source in ipairs(sources) do
@@ -97,22 +99,10 @@ function script_properties()
             if id == "text_ft2_source" then
                 local name = obs.obs_source_get_name(source)
                 obs.obs_property_list_add_string(p, name, name)
-            end
-        end
-        obs.source_list_release(sources)
-    end
-
-    local p2 = obs.obs_properties_add_list(props, "status_source_name", "ステータスのテキストソース", obs.OBS_COMBO_TYPE_EDITABLE, obs.OBS_COMBO_FORMAT_STRING)
-    local sources2 = obs.obs_enum_sources()
-    if sources2 ~= nil then
-        for _, source in ipairs(sources2) do
-            local id = obs.obs_source_get_unversioned_id(source)
-            if id == "text_ft2_source" then
-                local name = obs.obs_source_get_name(source)
                 obs.obs_property_list_add_string(p2, name, name)
             end
         end
-        obs.source_list_release(sources2)
+        obs.source_list_release(sources)
     end
 
     -- 時刻同期
