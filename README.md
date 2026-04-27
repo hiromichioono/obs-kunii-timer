@@ -34,3 +34,50 @@ OBS Studio 用のストップウォッチスクリプトです。テキストソ
 
 - OBS を再起動すると経過時間はリセットされます。
 - タイマーの精度は `os.time()` の 1 秒単位です。
+
+---
+
+# チャットオーバーレイ
+
+YouTube Live のチャットをリアルタイムで OBS に表示するシステムです。
+
+## 構成
+
+```
+YouTube Live
+    ↓ pytchat
+chat_server.py ──→ WebSocket (ws://localhost:8765) ──→ chat_overlay.html（OBSブラウザソース）
+    ↓
+logs/YYYY/YYYY_MM/chat_log_YYYYMMDD_HHMM.txt
+```
+
+## 動作環境
+
+- Python 3.8 以上
+- `pip install pytchat websockets`
+
+## 使い方
+
+**1. サーバーを起動する**
+
+```bash
+python chat_server.py "https://www.youtube.com/watch?v=xxxxxx"
+```
+
+URL を省略すると入力プロンプトが表示されます。
+
+**2. OBS にブラウザソースを追加する**
+
+1. OBS でソース追加 → 「ブラウザ」
+2. 「ローカルファイル」にチェックを入れ、`chat_overlay.html` を選択
+3. 幅・高さをキャンバスと同じ解像度に設定（例：1920×1080）
+
+**3. 確認**
+
+- オーバーレイ右下が **LIVE（緑）** になれば接続成功
+- チャットが右下に最新 6 件スライドイン表示されます
+
+## 注意
+
+- `chat_server.py` と OBS を同じマシンで起動してください。
+- ログは `logs/` フォルダに自動保存されます（`.gitignore` 対象）。
