@@ -12,9 +12,8 @@
       --font-md: 13px;
     }
 
-    html body {
+    body {
       background: transparent;
-      margin: 0;
       overflow: hidden;
       font-family: sans-serif;
     }
@@ -136,7 +135,7 @@
     function setStatus(online) {
       statusDot.className   = online ? "connected"  : "disconnected";
       statusLabel.className = online ? "label-on"   : "label-off";
-      statusLabel.textContent = online ? "LIVE" : "OFFLINE";
+      statusLabel.textContent = online ? "CONNECTED" : "OFFLINE";
     }
 
     function addMessage(author, text) {
