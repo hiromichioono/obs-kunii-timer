@@ -9,15 +9,10 @@ sync_seconds   = 0    -- 同期する秒
 blink_state        = true -- 点滅状態（true = コロンあり）
 status_source_name = ""   -- ステータス表示ソース名
 
--- 表示の更新 (00:00 形式)
-function update_text()
-    local source = obs.obs_get_source_by_name(source_name)
+-- テキストソースを更新する共通処理
+local function set_source_text(name, text)
+    local source = obs.obs_get_source_by_name(name)
     if source ~= nil then
-        local minutes = math.floor(total_seconds / 60)
-        local seconds = total_seconds % 60
-        local sep  = (timer_active or blink_state) and ":" or " "
-        local text = string.format("%02d%s%02d", minutes, sep, seconds)
-
         local settings = obs.obs_data_create()
         obs.obs_data_set_string(settings, "text", text)
         obs.obs_source_update(source, settings)
@@ -26,21 +21,21 @@ function update_text()
     end
 end
 
+-- 表示の更新 (00:00 形式)
+function update_text()
+    local sep  = (timer_active or blink_state) and ":" or " "
+    local text = string.format("%02d%s%02d", math.floor(total_seconds / 60), sep, total_seconds % 60)
+    set_source_text(source_name, text)
+end
+
 function update_status()
-    local source = obs.obs_get_source_by_name(status_source_name)
-    if source ~= nil then
-        local text
-        if timer_active then
-            text = "LIVE"
-        else
-            text = blink_state and "BREAK" or ""
-        end
-        local settings = obs.obs_data_create()
-        obs.obs_data_set_string(settings, "text", text)
-        obs.obs_source_update(source, settings)
-        obs.obs_data_release(settings)
-        obs.obs_source_release(source)
+    local text
+    if timer_active then
+        text = "LIVE"
+    else
+        text = blink_state and "BREAK" or ""
     end
+    set_source_text(status_source_name, text)
 end
 
 function blink_callback()

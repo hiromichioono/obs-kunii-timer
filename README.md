@@ -6,7 +6,7 @@ OBS Studio 用のストップウォッチスクリプトです。テキストソ
 
 - `os.time()` 差分方式を採用。OBS タイマーの発火遅延に依存しないため、長時間運用でも誤差が蓄積しません。
 - キックオフ / 一時停止 / リセットに対応。
-- Linux・Mac・Windows のテキストソース両対応（`text_ft2_source` / `text_gdiplus`）。
+- Linux・Mac のテキストソース対応（`text_ft2_source`）。
 
 ## 動作環境
 
