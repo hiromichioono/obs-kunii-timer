@@ -6,6 +6,12 @@
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
+    :root {
+      --accent: #60d0ff;
+      --font-sm: 11px;
+      --font-md: 13px;
+    }
+
     html body {
       background: transparent;
       margin: 0;
@@ -29,14 +35,14 @@
       align-self: flex-end;
       padding: 4px 12px;
       border-radius: 8px;
-      font-size: 11px;
+      font-size: var(--font-sm);
       font-weight: bold;
       letter-spacing: 0.15em;
-      color: #60d0ff;
+      color: var(--accent);
       background: rgba(0, 0, 0, 0.5);
       backdrop-filter: blur(6px);
-      border: 1px solid rgba(96, 208, 255, 0.3);
-      text-shadow: 0 0 10px rgba(96, 208, 255, 0.8);
+      border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+      text-shadow: 0 0 10px color-mix(in srgb, var(--accent) 80%, transparent);
     }
 
     /* チャットエリア（右下） */
@@ -55,6 +61,7 @@
       padding: 8px 12px;
       border-radius: 12px;
       margin-bottom: 8px;
+      font-size: var(--font-md);
       background: rgba(0, 0, 0, 0.55);
       backdrop-filter: blur(8px);
       border: 1px solid rgba(255, 255, 255, 0.1);
@@ -62,15 +69,13 @@
     }
 
     .author {
-      font-size: 13px;
       font-weight: bold;
       white-space: nowrap;
-      color: #60d0ff;
-      text-shadow: 0 0 8px rgba(96, 208, 255, 0.6);
+      color: var(--accent);
+      text-shadow: 0 0 8px color-mix(in srgb, var(--accent) 60%, transparent);
     }
 
     .text {
-      font-size: 13px;
       color: #ffffff;
       line-height: 1.4;
       word-break: break-all;
@@ -92,7 +97,7 @@
     }
 
     #status-label {
-      font-size: 11px;
+      font-size: var(--font-sm);
     }
 
     .connected    { background: #4ade80; box-shadow: 0 0 6px #4ade80; }
@@ -143,7 +148,7 @@
       messagesEl.appendChild(card);
 
       // 最大件数を超えたら古いものを削除
-      while (messagesEl.children.length > MAX_MESSAGES) {
+      if (messagesEl.children.length > MAX_MESSAGES) {
         messagesEl.removeChild(messagesEl.firstChild);
       }
     }
