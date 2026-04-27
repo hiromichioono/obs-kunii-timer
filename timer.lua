@@ -13,11 +13,8 @@ status_source_name = ""   -- ステータス表示ソース名
 function update_text()
     local source = obs.obs_get_source_by_name(source_name)
     if source ~= nil then
-        local minutes = math.floor(total_seconds / 60)
-        local seconds = total_seconds % 60
-        local sep  = (timer_active or blink_state) and ":" or " "
-        local text = string.format("%02d%s%02d", minutes, sep, seconds)
-
+        local sep      = (timer_active or blink_state) and ":" or " "
+        local text     = string.format("%02d%s%02d", math.floor(total_seconds / 60), sep, total_seconds % 60)
         local settings = obs.obs_data_create()
         obs.obs_data_set_string(settings, "text", text)
         obs.obs_source_update(source, settings)
