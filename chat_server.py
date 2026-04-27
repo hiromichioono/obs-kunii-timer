@@ -49,7 +49,7 @@ def fetch_chat(chat, loop: asyncio.AbstractEventLoop, log_file):
                 {
                     "author": c.author.name,
                     "message": c.message,
-                    "datetime": str(c.datetime),
+                    "datetime": c.datetime,
                 },
                 ensure_ascii=False,
             )
@@ -63,12 +63,12 @@ async def main(video_id: str):
     with open(filename, "a", encoding="utf-8") as f:
         print(f"ログ保存先: {filename}")
 
-        executor = ThreadPoolExecutor(max_workers=1)
-        future = loop.run_in_executor(executor, fetch_chat, chat, loop, f)
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            future = loop.run_in_executor(executor, fetch_chat, chat, loop, f)
 
-        async with websockets.serve(handler, "localhost", 8765):
-            print("WebSocketサーバー起動: ws://localhost:8765")
-            await future
+            async with websockets.serve(handler, "localhost", 8765):
+                print("WebSocketサーバー起動: ws://localhost:8765")
+                await future
 
 
 if __name__ == "__main__":
