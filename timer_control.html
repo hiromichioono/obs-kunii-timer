@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>Timer Control</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --accent: #60d0ff;
+      --bg: #111;
+      --surface: #1e1e1e;
+      --border: #333;
+    }
+
+    body {
+      background: var(--bg);
+      color: #fff;
+      font-family: sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      gap: 24px;
+      padding: 24px;
+    }
+
+    h1 {
+      font-size: 14px;
+      letter-spacing: 0.2em;
+      color: var(--accent);
+      text-transform: uppercase;
+    }
+
+    /* 現在時刻表示 */
+    #display {
+      font-size: 64px;
+      font-weight: bold;
+      letter-spacing: 0.05em;
+      color: var(--accent);
+      text-shadow: 0 0 20px color-mix(in srgb, var(--accent) 50%, transparent);
+    }
+
+    #state-label {
+      font-size: 12px;
+      letter-spacing: 0.2em;
+      color: #888;
+    }
+
+    /* ボタングループ */
+    #controls {
+      display: flex;
+      gap: 12px;
+    }
+
+    button {
+      padding: 10px 20px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: #fff;
+      font-size: 14px;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+    }
+
+    button:hover { background: #2a2a2a; border-color: #555; }
+
+    #btn-start  { border-color: #4ade80; color: #4ade80; }
+    #btn-start:hover { background: rgba(74, 222, 128, 0.1); }
+    #btn-stop   { border-color: #f87171; color: #f87171; }
+    #btn-stop:hover { background: rgba(248, 113, 113, 0.1); }
+    #btn-reset  { border-color: #888; }
+
+    /* 時刻同期 */
+    #sync-area {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--surface);
+      padding: 12px 16px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+    }
+
+    #sync-area label { font-size: 12px; color: #888; }
+
+    #sync-area input {
+      width: 52px;
+      padding: 6px 8px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: #fff;
+      font-size: 14px;
+      text-align: center;
+    }
+
+    #btn-sync {
+      padding: 6px 14px;
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+    #btn-sync:hover { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+
+    /* 接続状態 */
+    #status {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+    }
+
+    #status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+
+    .connected    { background: #4ade80; box-shadow: 0 0 6px #4ade80; }
+    .disconnected { background: #f87171; box-shadow: 0 0 6px #f87171; }
+    .label-on  { color: #4ade80; }
+    .label-off { color: #f87171; }
+  </style>
+</head>
+<body>
+  <h1>Timer Control</h1>
+
+  <div id="display">00:00</div>
+  <div id="state-label">STOPPED</div>
+
+  <div id="controls">
+    <button id="btn-start">キックオフ / 再開</button>
+    <button id="btn-stop">一時停止</button>
+    <button id="btn-reset">リセット</button>
+  </div>
+
+  <div id="sync-area">
+    <label>同期:</label>
+    <input id="sync-min" type="number" min="0" max="120" value="0" />
+    <label>分</label>
+    <input id="sync-sec" type="number" min="0" max="59" value="0" />
+    <label>秒</label>
+    <button id="btn-sync">時刻を同期</button>
+  </div>
+
+  <div id="status">
+    <div id="status-dot" class="disconnected"></div>
+    <span id="status-label" class="label-off">OFFLINE</span>
+  </div>
+
+  <script>
+    const WS_URL = "ws://localhost:8765";
+
+    const displayEl    = document.getElementById("display");
+    const stateLabelEl = document.getElementById("state-label");
+    const statusDot    = document.getElementById("status-dot");
+    const statusLabel  = document.getElementById("status-label");
+
+    let ws             = null;
+    let reconnectTimer = null;
+
+    function pad(n) { return String(n).padStart(2, "0"); }
+
+    function renderTimer(seconds, active) {
+      const m = Math.floor(seconds / 60);
+      const s = seconds % 60;
+      displayEl.textContent = `${pad(m)}:${pad(s)}`;
+      stateLabelEl.textContent = active ? "LIVE" : "STOPPED";
+      stateLabelEl.style.color = active ? "#4ade80" : "#888";
+    }
+
+    function setStatus(online) {
+      statusDot.className   = online ? "connected"  : "disconnected";
+      statusLabel.className = online ? "label-on"   : "label-off";
+      statusLabel.textContent = online ? "CONNECTED" : "OFFLINE";
+    }
+
+    function send(obj) {
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify(obj));
+      }
+    }
+
+    function connect() {
+      ws = new WebSocket(WS_URL);
+
+      ws.onopen = () => {
+        setStatus(true);
+        clearTimeout(reconnectTimer);
+      };
+
+      ws.onmessage = (e) => {
+        try {
+          const data = JSON.parse(e.data);
+          if (data.type === "timer") renderTimer(data.seconds, data.active);
+        } catch (_) {}
+      };
+
+      ws.onclose = () => {
+        setStatus(false);
+        reconnectTimer = setTimeout(connect, 3000);
+      };
+
+      ws.onerror = () => ws.close();
+    }
+
+    document.getElementById("btn-start").onclick = () => send({ type: "cmd", action: "start" });
+    document.getElementById("btn-stop").onclick  = () => send({ type: "cmd", action: "stop" });
+    document.getElementById("btn-reset").onclick = () => send({ type: "cmd", action: "reset" });
+    document.getElementById("btn-sync").onclick  = () => {
+      const min = parseInt(document.getElementById("sync-min").value, 10) || 0;
+      const sec = parseInt(document.getElementById("sync-sec").value, 10) || 0;
+      send({ type: "cmd", action: "sync", seconds: min * 60 + sec });
+    };
+
+    connect();
+  </script>
+</body>
+</html>

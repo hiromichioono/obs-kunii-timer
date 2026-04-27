@@ -172,7 +172,7 @@
       ws.onmessage = (e) => {
         try {
           const data = JSON.parse(e.data);
-          addMessage(data.author, data.message);
+          if (data.author) addMessage(data.author, data.message);
         } catch (_) {}
       };
 
