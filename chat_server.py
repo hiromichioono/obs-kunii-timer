@@ -5,6 +5,7 @@ import json
 import datetime
 import os
 import sys
+import time
 from concurrent.futures import ThreadPoolExecutor
 
 # --- ログ設定 ---
@@ -17,15 +18,35 @@ filename = os.path.join(LOG_DIR, f"chat_log_{now.strftime('%Y%m%d_%H%M')}.txt")
 # --- WebSocket クライアント管理 ---
 connected_clients = set()
 
+# --- タイマー状態 ---
+timer_active = False
+timer_start  = None   # float: time.time()
+timer_offset = 0.0    # 一時停止前までの累積秒数
 
-async def handler(websocket):
-    connected_clients.add(websocket)
-    print(f"クライアント接続 (合計: {len(connected_clients)})")
-    try:
-        await websocket.wait_closed()
-    finally:
-        connected_clients.discard(websocket)
-        print(f"クライアント切断 (合計: {len(connected_clients)})")
+
+def get_timer_seconds() -> float:
+    if timer_active and timer_start is not None:
+        return timer_offset + (time.time() - timer_start)
+    return timer_offset
+
+
+def handle_command(action: str, seconds: float = 0) -> None:
+    global timer_active, timer_start, timer_offset
+    if action == "start" and not timer_active:
+        timer_start = time.time()
+        timer_active = True
+    elif action == "stop" and timer_active:
+        timer_offset += time.time() - timer_start
+        timer_active = False
+        timer_start = None
+    elif action == "reset":
+        timer_active = False
+        timer_start = None
+        timer_offset = 0.0
+    elif action == "sync":
+        timer_offset = float(seconds)
+        if timer_active:
+            timer_start = time.time()
 
 
 async def broadcast(message: str):
@@ -34,6 +55,36 @@ async def broadcast(message: str):
             *[ws.send(message) for ws in connected_clients],
             return_exceptions=True,
         )
+
+
+async def broadcast_timer_state():
+    msg = json.dumps({"type": "timer", "seconds": int(get_timer_seconds()), "active": timer_active})
+    await broadcast(msg)
+
+
+async def timer_tick():
+    while True:
+        await asyncio.sleep(1)
+        await broadcast_timer_state()
+
+
+async def handler(websocket):
+    connected_clients.add(websocket)
+    print(f"クライアント接続 (合計: {len(connected_clients)})")
+    # 接続直後に現在のタイマー状態を送信
+    await websocket.send(json.dumps({"type": "timer", "seconds": int(get_timer_seconds()), "active": timer_active}))
+    try:
+        async for message in websocket:
+            try:
+                data = json.loads(message)
+                if data.get("type") == "cmd":
+                    handle_command(data["action"], data.get("seconds", 0))
+                    await broadcast_timer_state()
+            except (json.JSONDecodeError, KeyError):
+                pass
+    finally:
+        connected_clients.discard(websocket)
+        print(f"クライアント切断 (合計: {len(connected_clients)})")
 
 
 # --- pytchat チャット取得（別スレッドで実行）---
@@ -68,6 +119,7 @@ async def main(video_id: str):
 
             async with websockets.serve(handler, "localhost", 8765):
                 print("WebSocketサーバー起動: ws://localhost:8765")
+                asyncio.create_task(timer_tick())
                 await future
 
 

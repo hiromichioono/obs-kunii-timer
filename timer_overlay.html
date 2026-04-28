@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>Timer Overlay</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --accent: #60d0ff;
+      --font-sm: 11px;
+    }
+
+    body {
+      background: transparent;
+      overflow: hidden;
+      font-family: sans-serif;
+    }
+
+    #app {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: flex-end;
+      justify-content: flex-start;
+      padding: 16px;
+      pointer-events: none;
+      user-select: none;
+    }
+
+    #timer-card {
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 12px 24px 10px;
+      border-radius: 16px;
+      background: rgba(0, 0, 0, 0.55);
+      backdrop-filter: blur(8px);
+      border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+    }
+
+    #time {
+      font-size: 48px;
+      font-weight: bold;
+      letter-spacing: 0.05em;
+      color: var(--accent);
+      text-shadow: 0 0 20px color-mix(in srgb, var(--accent) 60%, transparent);
+      line-height: 1;
+    }
+
+    #timer-status {
+      font-size: 13px;
+      font-weight: bold;
+      letter-spacing: 0.2em;
+      margin-top: 4px;
+      min-height: 1em;
+    }
+
+    #timer-status.live  { color: #4ade80; text-shadow: 0 0 8px #4ade80; }
+    #timer-status.break { color: var(--accent); text-shadow: 0 0 8px color-mix(in srgb, var(--accent) 60%, transparent); }
+    #timer-status.empty { color: transparent; }
+
+    /* 接続ステータス */
+    #status {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin-top: 6px;
+    }
+
+    #status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+    }
+
+    #status-label { font-size: var(--font-sm); }
+
+    .connected    { background: #4ade80; box-shadow: 0 0 6px #4ade80; }
+    .disconnected { background: #f87171; box-shadow: 0 0 6px #f87171; }
+    .label-on  { color: #4ade80; }
+    .label-off { color: #f87171; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div id="timer-card">
+      <div id="time">00:00</div>
+      <div id="timer-status" class="empty">BREAK</div>
+      <div id="status">
+        <div id="status-dot" class="disconnected"></div>
+        <span id="status-label" class="label-off">OFFLINE</span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const WS_URL = "ws://localhost:8765";
+
+    const timeEl        = document.getElementById("time");
+    const timerStatusEl = document.getElementById("timer-status");
+    const statusDot     = document.getElementById("status-dot");
+    const statusLabel   = document.getElementById("status-label");
+
+    let timerActive    = false;
+    let totalSeconds   = 0;
+    let blinkState     = true;
+    let blinkInterval  = null;
+    let reconnectTimer = null;
+
+    function pad(n) { return String(n).padStart(2, "0"); }
+
+    function renderTime() {
+      const m = Math.floor(totalSeconds / 60);
+      const s = totalSeconds % 60;
+      timeEl.textContent = `${pad(m)}:${pad(s)}`;
+    }
+
+    function renderStatus() {
+      if (timerActive) {
+        timerStatusEl.className = "live";
+        timerStatusEl.textContent = "LIVE";
+      } else {
+        timerStatusEl.className = blinkState ? "break" : "empty";
+        timerStatusEl.textContent = "BREAK";
+      }
+    }
+
+    function startBlink() {
+      if (blinkInterval) return;
+      blinkInterval = setInterval(() => {
+        blinkState = !blinkState;
+        if (!timerActive) renderStatus();
+      }, 1000);
+    }
+
+    function setStatus(online) {
+      statusDot.className   = online ? "connected"  : "disconnected";
+      statusLabel.className = online ? "label-on"   : "label-off";
+      statusLabel.textContent = online ? "CONNECTED" : "OFFLINE";
+    }
+
+    function connect() {
+      const ws = new WebSocket(WS_URL);
+
+      ws.onopen = () => {
+        setStatus(true);
+        clearTimeout(reconnectTimer);
+      };
+
+      ws.onmessage = (e) => {
+        try {
+          const data = JSON.parse(e.data);
+          if (data.type !== "timer") return;
+          totalSeconds = data.seconds;
+          timerActive  = data.active;
+          renderTime();
+          renderStatus();
+        } catch (_) {}
+      };
+
+      ws.onclose = () => {
+        setStatus(false);
+        reconnectTimer = setTimeout(connect, 3000);
+      };
+
+      ws.onerror = () => ws.close();
+    }
+
+    startBlink();
+    connect();
+  </script>
+</body>
+</html>
