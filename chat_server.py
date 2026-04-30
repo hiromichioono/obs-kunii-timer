@@ -92,19 +92,26 @@ async def handler(websocket):
 def fetch_chat(chat, loop: asyncio.AbstractEventLoop, log_file):
     while chat.is_alive():
         for c in chat.get().sync_items():
-            log_line = f"[{c.datetime}] {c.author.name}: {c.message}\n"
+            amount = getattr(c, 'amountValue', 0)
+            currency = getattr(c, 'currency', '')
+
+            if amount:
+                log_line = f"[{c.datetime}] 💰{c.author.name} ({currency}{amount}): {c.message}\n"
+            else:
+                log_line = f"[{c.datetime}] {c.author.name}: {c.message}\n"
             print(log_line, end="")
             log_file.write(log_line)
             log_file.flush()
 
-            message = json.dumps(
-                {
-                    "author": c.author.name,
-                    "message": c.message,
-                    "datetime": c.datetime,
-                },
-                ensure_ascii=False,
-            )
+            payload = {
+                "author": c.author.name,
+                "message": c.message or "",
+                "datetime": c.datetime,
+            }
+            if amount:
+                payload["superchat"] = {"amount": amount, "currency": currency}
+
+            message = json.dumps(payload, ensure_ascii=False)
             asyncio.run_coroutine_threadsafe(broadcast(message), loop)
 
 
