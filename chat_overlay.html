@@ -88,6 +88,28 @@
       font-size: var(--font-sm);
     }
 
+    /* スーパーチャット */
+    .author-row {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+    }
+
+    .amount {
+      font-size: 0.75em;
+      font-weight: bold;
+      color: #ffd700;
+    }
+
+    .message.superchat {
+      background: rgba(255, 215, 0, 0.1);
+    }
+
+    .message.superchat .author {
+      color: #ffd700;
+      text-shadow: 0 0 8px rgba(255, 215, 0, 0.5);
+    }
+
     .connected    { background: #22c55e; box-shadow: 0 0 6px #22c55e; }
     .disconnected { background: var(--color-off); box-shadow: 0 0 6px var(--color-off); }
     .label-on  { color: #22c55e; }
@@ -136,15 +158,25 @@
       }
     }
 
-    function addMessage(author, text) {
+    function addMessage(author, text, superchat) {
       const card = document.createElement("div");
-      card.className = "message";
-      card.innerHTML =
-        `<span class="author">${escapeHtml(author)}</span>` +
-        `<span class="text">${escapeHtml(text)}</span>`;
-      messagesEl.appendChild(card);
+      card.className = superchat ? "message superchat" : "message";
 
-      // 最大件数を超えたら古いものを削除
+      if (superchat) {
+        const textHtml = text ? `<span class="text">${escapeHtml(text)}</span>` : "";
+        card.innerHTML =
+          `<div class="author-row">` +
+            `<span class="author">${escapeHtml(author)}</span>` +
+            `<span class="amount">${escapeHtml(superchat.currency)}${escapeHtml(String(superchat.amount))}</span>` +
+          `</div>` +
+          textHtml;
+      } else {
+        card.innerHTML =
+          `<span class="author">${escapeHtml(author)}</span>` +
+          `<span class="text">${escapeHtml(text)}</span>`;
+      }
+
+      messagesEl.appendChild(card);
       if (messagesEl.children.length > MAX_MESSAGES) {
         messagesEl.removeChild(messagesEl.firstChild);
       }
@@ -169,7 +201,7 @@
         try {
           const data = JSON.parse(e.data);
           if (data.type === "timer") setStatus(true, data.chat);
-          if (data.author) addMessage(data.author, data.message);
+          if (data.author) addMessage(data.author, data.message, data.superchat);
         } catch (_) {}
       };
 
