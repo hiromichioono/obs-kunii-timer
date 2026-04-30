@@ -88,10 +88,8 @@
 
     .connected    { background: #22c55e; box-shadow: 0 0 6px #22c55e; }
     .disconnected { background: var(--color-off); box-shadow: 0 0 6px var(--color-off); }
-    .chat-off     { background: #888; box-shadow: none; }
-    .label-on      { color: #22c55e; }
-    .label-off     { color: var(--color-off); }
-    .label-neutral { color: #888; }
+    .label-on  { color: #22c55e; }
+    .label-off { color: var(--color-off); }
 
     @keyframes slideIn {
       from { opacity: 0; transform: translateX(60px); }
@@ -126,8 +124,8 @@
         statusLabel.className = "label-off";
         statusLabel.textContent = "OFFLINE";
       } else if (!chatOn) {
-        statusDot.className   = "chat-off";
-        statusLabel.className = "label-neutral";
+        statusDot.className   = "disconnected";
+        statusLabel.className = "label-off";
         statusLabel.textContent = "CHAT OFF";
       } else {
         statusDot.className   = "connected";
