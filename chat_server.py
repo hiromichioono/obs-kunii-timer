@@ -17,6 +17,7 @@ filename = os.path.join(LOG_DIR, f"chat_log_{now.strftime('%Y%m%d_%H%M')}.txt")
 
 # --- WebSocket クライアント管理 ---
 connected_clients = set()
+chat_enabled = False  # YouTube URL ありで起動した場合 True
 
 # --- タイマー状態 ---
 timer_active = False
@@ -58,7 +59,7 @@ async def broadcast(message: str):
 
 
 async def broadcast_timer_state():
-    msg = json.dumps({"type": "timer", "seconds": int(get_timer_seconds()), "active": timer_active})
+    msg = json.dumps({"type": "timer", "seconds": int(get_timer_seconds()), "active": timer_active, "chat": chat_enabled})
     await broadcast(msg)
 
 
@@ -72,7 +73,7 @@ async def handler(websocket):
     connected_clients.add(websocket)
     print(f"クライアント接続 (合計: {len(connected_clients)})")
     # 接続直後に現在のタイマー状態を送信
-    await websocket.send(json.dumps({"type": "timer", "seconds": int(get_timer_seconds()), "active": timer_active}))
+    await websocket.send(json.dumps({"type": "timer", "seconds": int(get_timer_seconds()), "active": timer_active, "chat": chat_enabled}))
     try:
         async for message in websocket:
             try:
@@ -108,6 +109,8 @@ def fetch_chat(chat, loop: asyncio.AbstractEventLoop, log_file):
 
 
 async def main(video_id: str | None):
+    global chat_enabled
+    chat_enabled = video_id is not None
     loop = asyncio.get_running_loop()
 
     async with websockets.serve(handler, "localhost", 8765):
