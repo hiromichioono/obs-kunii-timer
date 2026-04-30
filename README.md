@@ -36,7 +36,24 @@ logs/...（チャットあり時）                          └──→ chat_o
 - Python 3.8 以上
 - `pip install pytchat websockets`
 
+### セットアップ（初回のみ）
+
+仮想環境の使用を推奨します。
+
+```bash
+python -m venv venv
+source venv/bin/activate   # Windows: venv\Scripts\activate
+pip install pytchat websockets
+```
+
 ### 使い方
+
+**0. OBS と仮想環境を起動する**
+
+```bash
+open -a OBS                 # OBS を起動（Mac）
+source venv/bin/activate    # 仮想環境を有効化
+```
 
 **1. サーバーを起動する**
 
