@@ -109,7 +109,7 @@ def fetch_chat(chat, loop: asyncio.AbstractEventLoop, log_file):
 
 async def main(video_id: str):
     loop = asyncio.get_running_loop()
-    chat = pytchat.create(video_id=video_id)  # メインスレッドで生成（signal.signal制約のため）
+    chat = pytchat.create(video_id=f"https://www.youtube.com/watch?v={video_id}")  # メインスレッドで生成（signal.signal制約のため）
 
     with open(filename, "a", encoding="utf-8") as f:
         print(f"ログ保存先: {filename}")
