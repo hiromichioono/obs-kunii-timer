@@ -7,9 +7,10 @@
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
     :root {
-      --accent: #60d0ff;
+      --accent: #002366;
+      --color-off: #e91e83;
       --font-sm: 11px;
-      --font-md: 13px;
+      --font-md: 24px;
     }
 
     body {
@@ -23,33 +24,21 @@
       inset: 0;
       display: flex;
       flex-direction: column;
-      justify-content: space-between;
+      justify-content: flex-end;
       padding: 16px;
       pointer-events: none;
       user-select: none;
     }
 
-    /* KUNII METHOD ロゴ（右上） */
-    #logo {
-      align-self: flex-end;
-      padding: 4px 12px;
-      border-radius: 8px;
-      font-size: var(--font-sm);
-      font-weight: bold;
-      letter-spacing: 0.15em;
-      color: var(--accent);
-      background: rgba(0, 0, 0, 0.5);
-      backdrop-filter: blur(6px);
-      border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
-      text-shadow: 0 0 10px color-mix(in srgb, var(--accent) 80%, transparent);
-    }
-
     /* チャットエリア（右下） */
     #chat-area {
       align-self: flex-end;
-      width: 320px;
+      width: 480px;
       display: flex;
       flex-direction: column;
+      background: rgba(30, 30, 30, 0.5);
+      border-radius: 12px;
+      padding: 8px;
     }
 
     /* メッセージカード */
@@ -61,9 +50,7 @@
       border-radius: 12px;
       margin-bottom: 8px;
       font-size: var(--font-md);
-      background: rgba(0, 0, 0, 0.55);
-      backdrop-filter: blur(8px);
-      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: transparent;
       animation: slideIn 0.35s ease-out forwards;
     }
 
@@ -99,10 +86,10 @@
       font-size: var(--font-sm);
     }
 
-    .connected    { background: #4ade80; box-shadow: 0 0 6px #4ade80; }
-    .disconnected { background: #f87171; box-shadow: 0 0 6px #f87171; }
-    .label-on  { color: #4ade80; }
-    .label-off { color: #f87171; }
+    .connected    { background: #22c55e; box-shadow: 0 0 6px #22c55e; }
+    .disconnected { background: var(--color-off); box-shadow: 0 0 6px var(--color-off); }
+    .label-on  { color: #22c55e; }
+    .label-off { color: var(--color-off); }
 
     @keyframes slideIn {
       from { opacity: 0; transform: translateX(60px); }
@@ -112,7 +99,6 @@
 </head>
 <body>
   <div id="app">
-    <div id="logo">KUNII METHOD</div>
     <div id="chat-area">
       <div id="messages"></div>
       <div id="status">

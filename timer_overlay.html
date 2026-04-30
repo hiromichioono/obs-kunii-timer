@@ -7,7 +7,8 @@
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
     :root {
-      --accent: #60d0ff;
+      --accent: #002366;
+      --color-off: #e91e83;
       --font-sm: 11px;
     }
 
@@ -21,7 +22,7 @@
       position: fixed;
       inset: 0;
       display: flex;
-      align-items: flex-end;
+      align-items: flex-start;
       justify-content: flex-start;
       padding: 16px;
       pointer-events: none;
@@ -29,18 +30,15 @@
     }
 
     #timer-card {
+      position: relative;
       display: inline-flex;
       flex-direction: column;
-      align-items: center;
-      padding: 12px 24px 10px;
-      border-radius: 16px;
-      background: rgba(0, 0, 0, 0.55);
-      backdrop-filter: blur(8px);
-      border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+      align-items: flex-start;
+      background: transparent;
     }
 
     #time {
-      font-size: 48px;
+      font-size: 120px;
       font-weight: bold;
       letter-spacing: 0.05em;
       color: var(--accent);
@@ -49,15 +47,17 @@
     }
 
     #timer-status {
-      font-size: 13px;
+      position: absolute;
+      top: -20px;
+      right: 0;
+      z-index: 1;
+      font-size: 36px;
       font-weight: bold;
       letter-spacing: 0.2em;
-      margin-top: 4px;
-      min-height: 1em;
     }
 
-    #timer-status.live  { color: #4ade80; text-shadow: 0 0 8px #4ade80; }
-    #timer-status.break { color: var(--accent); text-shadow: 0 0 8px color-mix(in srgb, var(--accent) 60%, transparent); }
+    #timer-status.live  { color: #22c55e; text-shadow: 0 0 8px #22c55e; }
+    #timer-status.break { color: var(--color-off); text-shadow: 0 0 8px color-mix(in srgb, var(--color-off) 60%, transparent); }
     #timer-status.empty { color: transparent; }
 
     /* 接続ステータス */
@@ -65,32 +65,31 @@
       display: flex;
       align-items: center;
       gap: 4px;
-      margin-top: 6px;
     }
 
     #status-dot {
-      width: 6px;
-      height: 6px;
+      width: 8px;
+      height: 8px;
       border-radius: 50%;
     }
 
-    #status-label { font-size: var(--font-sm); }
+    #status-label { font-size: 11px; }
 
-    .connected    { background: #4ade80; box-shadow: 0 0 6px #4ade80; }
-    .disconnected { background: #f87171; box-shadow: 0 0 6px #f87171; }
-    .label-on  { color: #4ade80; }
-    .label-off { color: #f87171; }
+    .connected    { background: #22c55e; box-shadow: 0 0 6px #22c55e; }
+    .disconnected { background: var(--color-off); box-shadow: 0 0 6px var(--color-off); }
+    .label-on  { color: #22c55e; }
+    .label-off { color: var(--color-off); }
   </style>
 </head>
 <body>
   <div id="app">
     <div id="timer-card">
-      <div id="time">00:00</div>
-      <div id="timer-status" class="empty">BREAK</div>
       <div id="status">
         <div id="status-dot" class="disconnected"></div>
         <span id="status-label" class="label-off">OFFLINE</span>
       </div>
+      <div id="time">00:00</div>
+      <div id="timer-status" class="empty">BREAK</div>
     </div>
   </div>
 
