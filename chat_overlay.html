@@ -44,8 +44,8 @@
     /* メッセージカード */
     .message {
       display: flex;
-      align-items: flex-start;
-      gap: 8px;
+      flex-direction: column;
+      gap: 2px;
       padding: 8px 12px;
       border-radius: 12px;
       margin-bottom: 8px;
@@ -57,6 +57,8 @@
     .author {
       font-weight: bold;
       white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
       color: var(--accent);
       text-shadow: 0 0 8px color-mix(in srgb, var(--accent) 60%, transparent);
     }
@@ -64,7 +66,7 @@
     .text {
       color: #ffffff;
       line-height: 1.4;
-      word-break: break-all;
+      overflow-wrap: break-word;
     }
 
     /* 接続ステータス */
