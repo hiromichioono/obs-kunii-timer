@@ -66,14 +66,18 @@ python chat_server.py "https://www.youtube.com/watch?v=xxxxxx"
 
 | ファイル | 用途 | 推奨サイズ |
 |----------|------|------------|
-| `timer_overlay.html` | タイマー表示（左下） | 400 × 150 px |
+| `timer_overlay.html` | タイマー表示（左上） | キャンバスと同解像度（例: 1920 × 1080） |
 | `chat_overlay.html`  | チャット表示（右下） | キャンバスと同解像度（例: 1920 × 1080） |
 
 OBS でソース追加 → 「ブラウザ」→「ローカルファイル」にチェックを入れてファイルを選択します。
 
 **4. 確認**
 
-- `timer_overlay.html`・`chat_overlay.html` 右下のインジケーターが **LIVE（緑）** になれば接続成功
+- `timer_overlay.html` のインジケーターが **CONNECTED（緑）** になれば接続成功
+- `chat_overlay.html` のインジケーター表示:
+  - **CONNECTED（緑）** — YouTube チャットあり・接続中
+  - **CHAT OFF（ピンク）** — タイマーのみモードで起動中（チャットなし）
+  - **OFFLINE（ピンク）** — サーバー未起動または切断中
 - タイマーステータス: 動作中は `LIVE`、停止中は `BREAK`（1 秒ごとに点滅）
 
 ### 注意
