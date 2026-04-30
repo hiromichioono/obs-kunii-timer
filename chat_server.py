@@ -107,33 +107,38 @@ def fetch_chat(chat, loop: asyncio.AbstractEventLoop, log_file):
             asyncio.run_coroutine_threadsafe(broadcast(message), loop)
 
 
-async def main(video_id: str):
+async def main(video_id: str | None):
     loop = asyncio.get_running_loop()
-    chat = pytchat.create(video_id=f"https://www.youtube.com/watch?v={video_id}")  # メインスレッドで生成（signal.signal制約のため）
 
-    with open(filename, "a", encoding="utf-8") as f:
-        print(f"ログ保存先: {filename}")
+    async with websockets.serve(handler, "localhost", 8765):
+        print("WebSocketサーバー起動: ws://localhost:8765")
+        asyncio.create_task(timer_tick())
 
-        with ThreadPoolExecutor(max_workers=1) as executor:
-            future = loop.run_in_executor(executor, fetch_chat, chat, loop, f)
-
-            async with websockets.serve(handler, "localhost", 8765):
-                print("WebSocketサーバー起動: ws://localhost:8765")
-                asyncio.create_task(timer_tick())
-                await future
+        if video_id is None:
+            print("タイマーのみモードで起動（チャットなし）")
+            await asyncio.Future()  # 無限待機
+        else:
+            chat = pytchat.create(video_id=f"https://www.youtube.com/watch?v={video_id}")  # メインスレッドで生成（signal.signal制約のため）
+            with open(filename, "a", encoding="utf-8") as f:
+                print(f"ログ保存先: {filename}")
+                with ThreadPoolExecutor(max_workers=1) as executor:
+                    await loop.run_in_executor(executor, fetch_chat, chat, loop, f)
 
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:
         url = sys.argv[1]
     else:
-        url = input("YouTube URLを入力: ")
+        url = input("YouTube URLを入力 (Enterでスキップ): ").strip()
 
-    video_id = (
-        url.split("v=")[-1].split("&")[0]
-        if "v=" in url
-        else url.split("/")[-1].split("?")[0]
-    )
+    if url:
+        video_id = (
+            url.split("v=")[-1].split("&")[0]
+            if "v=" in url
+            else url.split("/")[-1].split("?")[0]
+        )
+    else:
+        video_id = None
 
     try:
         asyncio.run(main(video_id))
