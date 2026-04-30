@@ -118,10 +118,20 @@
 
     let reconnectTimer = null;
 
-    function setStatus(online) {
-      statusDot.className   = online ? "connected"  : "disconnected";
-      statusLabel.className = online ? "label-on"   : "label-off";
-      statusLabel.textContent = online ? "CONNECTED" : "OFFLINE";
+    function setStatus(online, chatOn = false) {
+      if (!online) {
+        statusDot.className   = "disconnected";
+        statusLabel.className = "label-off";
+        statusLabel.textContent = "OFFLINE";
+      } else if (!chatOn) {
+        statusDot.className   = "disconnected";
+        statusLabel.className = "label-off";
+        statusLabel.textContent = "CHAT OFF";
+      } else {
+        statusDot.className   = "connected";
+        statusLabel.className = "label-on";
+        statusLabel.textContent = "CONNECTED";
+      }
     }
 
     function addMessage(author, text) {
@@ -150,13 +160,13 @@
       const ws = new WebSocket(WS_URL);
 
       ws.onopen = () => {
-        setStatus(true);
         clearTimeout(reconnectTimer);
       };
 
       ws.onmessage = (e) => {
         try {
           const data = JSON.parse(e.data);
+          if (data.type === "timer") setStatus(true, data.chat);
           if (data.author) addMessage(data.author, data.message);
         } catch (_) {}
       };

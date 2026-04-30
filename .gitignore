@@ -41,3 +41,6 @@ luac.out
 
 # Chat logs
 logs/
+
+# Local data files
+*.csv
