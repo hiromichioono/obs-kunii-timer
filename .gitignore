@@ -42,5 +42,8 @@ luac.out
 # Chat logs
 logs/
 
+# Environment variables (API keys etc.)
+.env
+
 # Local data files
 *.csv
