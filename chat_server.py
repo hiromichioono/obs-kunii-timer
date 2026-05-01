@@ -80,11 +80,17 @@ async def start_chat(video_id: str):
     chat_enabled = True
     await broadcast_timer_state()
     loop = asyncio.get_running_loop()
-    chat = pytchat.create(video_id=f"https://www.youtube.com/watch?v={video_id}")
-    print(f"チャット開始: {video_id}, ログ: {filename}")
-    with open(filename, "a", encoding="utf-8") as f:
-        with ThreadPoolExecutor(max_workers=1) as executor:
-            await loop.run_in_executor(executor, fetch_chat, chat, loop, f)
+    try:
+        chat = pytchat.create(video_id=f"https://www.youtube.com/watch?v={video_id}")
+        print(f"チャット開始: {video_id}, ログ: {filename}")
+        with open(filename, "a", encoding="utf-8") as f:
+            with ThreadPoolExecutor(max_workers=1) as executor:
+                await loop.run_in_executor(executor, fetch_chat, chat, loop, f)
+    except Exception as e:
+        print(f"チャットエラー: {e}")
+    finally:
+        chat_enabled = False
+        await broadcast_timer_state()
 
 
 async def handler(websocket):
@@ -144,11 +150,12 @@ async def main(video_id: str | None):
         print("WebSocketサーバー起動: ws://localhost:8765")
         asyncio.create_task(timer_tick())
 
-        if video_id is None:
-            print("タイマーのみモードで起動（チャットなし）")
-            await asyncio.Future()  # 無限待機
+        if video_id is not None:
+            asyncio.create_task(start_chat(video_id))
         else:
-            await start_chat(video_id)
+            print("タイマーのみモードで起動（チャットなし）")
+
+        await asyncio.Future()  # 無限待機（チャット終了後もサーバーを維持）
 
 
 if __name__ == "__main__":
