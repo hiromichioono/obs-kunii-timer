@@ -104,6 +104,38 @@
     }
     #btn-sync:hover { background: color-mix(in srgb, var(--accent) 10%, transparent); }
 
+    /* YouTube チャット開始 */
+    #chat-area {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--surface);
+      padding: 12px 16px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+    }
+
+    #chat-area label { font-size: 12px; color: #888; white-space: nowrap; }
+
+    #chat-url {
+      flex: 1;
+      min-width: 240px;
+      padding: 6px 8px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: #fff;
+      font-size: 13px;
+    }
+
+    #btn-chat-start {
+      padding: 6px 14px;
+      border-color: #4ade80;
+      color: #4ade80;
+      white-space: nowrap;
+    }
+    #btn-chat-start:hover { background: rgba(74, 222, 128, 0.1); }
+
     /* 接続状態 */
     #status {
       display: flex;
@@ -145,6 +177,12 @@
     <button id="btn-sync">時刻を同期</button>
   </div>
 
+  <div id="chat-area">
+    <label>YouTube URL:</label>
+    <input id="chat-url" type="text" placeholder="https://www.youtube.com/watch?v=..." />
+    <button id="btn-chat-start">チャット開始</button>
+  </div>
+
   <div id="status">
     <div id="status-dot" class="disconnected"></div>
     <span id="status-label" class="label-off">OFFLINE</span>
@@ -157,6 +195,7 @@
     const stateLabelEl = document.getElementById("state-label");
     const statusDot    = document.getElementById("status-dot");
     const statusLabel  = document.getElementById("status-label");
+    const chatAreaEl   = document.getElementById("chat-area");
 
     let ws             = null;
     let reconnectTimer = null;
@@ -194,7 +233,10 @@
       ws.onmessage = (e) => {
         try {
           const data = JSON.parse(e.data);
-          if (data.type === "timer") renderTimer(data.seconds, data.active);
+          if (data.type === "timer") {
+            renderTimer(data.seconds, data.active);
+            chatAreaEl.style.display = data.chat ? "none" : "flex";
+          }
         } catch (_) {}
       };
 
@@ -205,6 +247,11 @@
 
       ws.onerror = () => ws.close();
     }
+
+    document.getElementById("btn-chat-start").onclick = () => {
+      const url = document.getElementById("chat-url").value.trim();
+      if (url) send({ type: "cmd", action: "start_chat", url });
+    };
 
     document.getElementById("btn-start").onclick = () => send({ type: "cmd", action: "start" });
     document.getElementById("btn-stop").onclick  = () => send({ type: "cmd", action: "stop" });

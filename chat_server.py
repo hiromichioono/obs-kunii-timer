@@ -69,6 +69,34 @@ async def timer_tick():
         await broadcast_timer_state()
 
 
+def extract_video_id(url: str) -> str:
+    return url.split("v=")[-1].split("&")[0] if "v=" in url else url.split("/")[-1].split("?")[0]
+
+
+async def start_chat(video_id: str):
+    global chat_enabled
+    if chat_enabled:
+        return
+    chat_enabled = True
+    await broadcast_timer_state()
+    loop = asyncio.get_running_loop()
+    try:
+        chat = pytchat.create(video_id=f"https://www.youtube.com/watch?v={video_id}")
+        print(f"チャット開始: {video_id}, ログ: {filename}")
+        with open(filename, "a", encoding="utf-8") as f:
+            with ThreadPoolExecutor(max_workers=1) as executor:
+                try:
+                    await loop.run_in_executor(executor, fetch_chat, chat, loop, f)
+                except asyncio.CancelledError:
+                    chat.terminate()
+                    raise
+    except Exception as e:
+        print(f"チャットエラー: {e}")
+    finally:
+        chat_enabled = False
+        await broadcast_timer_state()
+
+
 async def handler(websocket):
     connected_clients.add(websocket)
     print(f"クライアント接続 (合計: {len(connected_clients)})")
@@ -79,8 +107,14 @@ async def handler(websocket):
             try:
                 data = json.loads(message)
                 if data.get("type") == "cmd":
-                    handle_command(data["action"], data.get("seconds", 0))
-                    await broadcast_timer_state()
+                    action = data["action"]
+                    if action == "start_chat":
+                        url = data.get("url", "").strip()
+                        if url and not chat_enabled:
+                            asyncio.create_task(start_chat(extract_video_id(url)))
+                    else:
+                        handle_command(action, data.get("seconds", 0))
+                        await broadcast_timer_state()
             except (json.JSONDecodeError, KeyError):
                 pass
     finally:
@@ -116,23 +150,16 @@ def fetch_chat(chat, loop: asyncio.AbstractEventLoop, log_file):
 
 
 async def main(video_id: str | None):
-    global chat_enabled
-    chat_enabled = video_id is not None
-    loop = asyncio.get_running_loop()
-
     async with websockets.serve(handler, "localhost", 8765):
         print("WebSocketサーバー起動: ws://localhost:8765")
         asyncio.create_task(timer_tick())
 
-        if video_id is None:
-            print("タイマーのみモードで起動（チャットなし）")
-            await asyncio.Future()  # 無限待機
+        if video_id is not None:
+            asyncio.create_task(start_chat(video_id))
         else:
-            chat = pytchat.create(video_id=f"https://www.youtube.com/watch?v={video_id}")  # メインスレッドで生成（signal.signal制約のため）
-            with open(filename, "a", encoding="utf-8") as f:
-                print(f"ログ保存先: {filename}")
-                with ThreadPoolExecutor(max_workers=1) as executor:
-                    await loop.run_in_executor(executor, fetch_chat, chat, loop, f)
+            print("タイマーのみモードで起動（チャットなし）")
+
+        await asyncio.Future()  # 無限待機（チャット終了後もサーバーを維持）
 
 
 if __name__ == "__main__":
@@ -141,14 +168,7 @@ if __name__ == "__main__":
     else:
         url = input("YouTube URLを入力 (Enterでスキップ): ").strip()
 
-    if url:
-        video_id = (
-            url.split("v=")[-1].split("&")[0]
-            if "v=" in url
-            else url.split("/")[-1].split("?")[0]
-        )
-    else:
-        video_id = None
+    video_id = extract_video_id(url) if url else None
 
     try:
         asyncio.run(main(video_id))
