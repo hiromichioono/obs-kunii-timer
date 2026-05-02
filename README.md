@@ -13,6 +13,7 @@ obs-kunii-timer/
 ├── timer_overlay.html   # OBS ブラウザソース用タイマーオーバーレイ
 ├── timer_control.html   # タイマー操作パネル（ブラウザで開く）
 ├── chat_overlay.html    # OBS ブラウザソース用チャットオーバーレイ
+├── .env                 # APIキー・チャンネルID設定（.gitignore 対象）
 └── logs/                # チャットログ保存先（.gitignore 対象）
 ```
 
@@ -47,6 +48,15 @@ source venv/bin/activate   # Windows: venv\Scripts\activate
 pip install pytchat websockets
 ```
 
+YouTube ライブ動画IDの**自動取得**を使う場合は `.env` を作成します。
+
+```
+YOUTUBE_API_KEY=your_api_key_here
+YOUTUBE_CHANNEL_ID=UCxxxxxxxxxxxxxxxxxxxxxxx
+```
+
+> `.env` を置かなくても起動時に URL を手動入力するか、引数で渡すことができます。
+
 ### 使い方
 
 **0. OBS を起動する**
@@ -66,7 +76,11 @@ source venv/bin/activate
 python chat_server.py
 ```
 
-起動すると YouTube URL の入力を求められます。**Enter でスキップするとタイマーのみモード**で起動します（チャットなし）。URL を入力するとチャット取得も有効になります。
+起動時の動作は以下の優先順位で決まります。
+
+1. **引数あり** → 指定した URL のチャットを取得
+2. **`.env` 設定あり** → チャンネルのライブ動画IDを自動取得してチャット開始
+3. **上記なし** → URL 入力プロンプト（Enter でスキップするとタイマーのみモード）
 
 ```bash
 # 引数で直接 URL を渡すこともできます

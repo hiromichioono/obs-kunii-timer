@@ -6,6 +6,8 @@ import datetime
 import os
 import sys
 import time
+import urllib.request
+import urllib.parse
 from concurrent.futures import ThreadPoolExecutor
 
 # --- ログ設定 ---
@@ -67,6 +69,40 @@ async def timer_tick():
     while True:
         await asyncio.sleep(1)
         await broadcast_timer_state()
+
+
+def load_env():
+    env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
+    if not os.path.exists(env_path):
+        return
+    with open(env_path) as f:
+        for line in f:
+            line = line.strip()
+            if line and not line.startswith("#") and "=" in line:
+                key, _, val = line.partition("=")
+                os.environ.setdefault(key.strip(), val.strip())
+
+
+def fetch_live_video_id() -> str | None:
+    api_key    = os.environ.get("YOUTUBE_API_KEY")
+    channel_id = os.environ.get("YOUTUBE_CHANNEL_ID")
+    if not api_key or not channel_id:
+        return None
+    params = urllib.parse.urlencode({
+        "part": "id",
+        "channelId": channel_id,
+        "eventType": "live",
+        "type": "video",
+        "key": api_key,
+    })
+    try:
+        with urllib.request.urlopen(f"https://www.googleapis.com/youtube/v3/search?{params}", timeout=10) as res:
+            data = json.loads(res.read())
+        items = data.get("items", [])
+        return items[0]["id"]["videoId"] if items else None
+    except Exception as e:
+        print(f"ライブ動画ID取得エラー: {e}")
+        return None
 
 
 def extract_video_id(url: str) -> str:
@@ -163,12 +199,18 @@ async def main(video_id: str | None):
 
 
 if __name__ == "__main__":
+    load_env()
     if len(sys.argv) > 1:
         url = sys.argv[1]
+        video_id = extract_video_id(url)
     else:
-        url = input("YouTube URLを入力 (Enterでスキップ): ").strip()
-
-    video_id = extract_video_id(url) if url else None
+        print("ライブ動画IDを自動取得中...")
+        video_id = fetch_live_video_id()
+        if video_id:
+            print(f"ライブ動画を検出: {video_id}")
+        else:
+            url = input("URLを入力 (Enterでスキップ): ").strip()
+            video_id = extract_video_id(url) if url else None
 
     try:
         asyncio.run(main(video_id))
