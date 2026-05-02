@@ -154,9 +154,15 @@ async def handler(websocket):
                 if data.get("type") == "cmd":
                     action = data["action"]
                     if action == "start_chat":
-                        url = data.get("url", "").strip()
-                        if url and not chat_enabled:
-                            asyncio.create_task(start_chat(extract_video_id(url)))
+                        video_id = data.get("video_id", "").strip()
+                        if not video_id:
+                            url = data.get("url", "").strip()
+                            video_id = extract_video_id(url) if url else ""
+                        if video_id and not chat_enabled:
+                            asyncio.create_task(start_chat(video_id))
+                    elif action == "get_streams":
+                        items = fetch_streams()
+                        await websocket.send(json.dumps({"type": "streams", "items": items}))
                     else:
                         handle_command(action, data.get("seconds", 0))
                         await broadcast_timer_state()
