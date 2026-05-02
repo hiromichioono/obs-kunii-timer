@@ -1,5 +1,6 @@
 import asyncio
 import signal
+import socket
 import websockets
 import pytchat
 import json
@@ -61,9 +62,10 @@ def handle_command(action: str, seconds: float = 0) -> None:
 
 
 async def broadcast(message: str):
-    if connected_clients:
+    clients = list(connected_clients)  # イテレート中の変更を避けるためスナップショット
+    if clients:
         await asyncio.gather(
-            *[ws.send(message) for ws in connected_clients],
+            *[ws.send(message) for ws in clients],
             return_exceptions=True,
         )
 
@@ -251,7 +253,6 @@ async def main(video_id: str | None):
     loop = asyncio.get_running_loop()
     loop.add_signal_handler(signal.SIGINT, lambda: (print("\n✅ 記録を終了しました。") or os._exit(0)))
 
-    import socket
     hostname = socket.gethostname()
     threading.Thread(target=_start_http, daemon=True).start()
 
