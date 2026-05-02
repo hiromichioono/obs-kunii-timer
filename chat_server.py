@@ -83,26 +83,35 @@ def load_env():
                 os.environ.setdefault(key.strip(), val.strip())
 
 
-def fetch_live_video_id() -> str | None:
+def fetch_streams() -> list[dict]:
+    """ライブ中・配信予約の動画一覧を返す"""
     api_key    = os.environ.get("YOUTUBE_API_KEY")
     channel_id = os.environ.get("YOUTUBE_CHANNEL_ID")
     if not api_key or not channel_id:
-        return None
-    params = urllib.parse.urlencode({
-        "part": "id",
-        "channelId": channel_id,
-        "eventType": "live",
-        "type": "video",
-        "key": api_key,
-    })
-    try:
-        with urllib.request.urlopen(f"https://www.googleapis.com/youtube/v3/search?{params}", timeout=10) as res:
-            data = json.loads(res.read())
-        items = data.get("items", [])
-        return items[0]["id"]["videoId"] if items else None
-    except Exception as e:
-        print(f"ライブ動画ID取得エラー: {e}")
-        return None
+        return []
+    results = []
+    for event_type in ("live", "upcoming"):
+        params = urllib.parse.urlencode({
+            "part": "id,snippet",
+            "channelId": channel_id,
+            "eventType": event_type,
+            "type": "video",
+            "key": api_key,
+        })
+        try:
+            with urllib.request.urlopen(
+                f"https://www.googleapis.com/youtube/v3/search?{params}", timeout=10
+            ) as res:
+                data = json.loads(res.read())
+            for item in data.get("items", []):
+                results.append({
+                    "video_id": item["id"]["videoId"],
+                    "title":    item["snippet"]["title"],
+                    "live":     event_type == "live",
+                })
+        except Exception as e:
+            print(f"配信情報取得エラー ({event_type}): {e}")
+    return results
 
 
 def extract_video_id(url: str) -> str:
@@ -201,13 +210,23 @@ async def main(video_id: str | None):
 if __name__ == "__main__":
     load_env()
     if len(sys.argv) > 1:
-        url = sys.argv[1]
-        video_id = extract_video_id(url)
+        video_id = extract_video_id(sys.argv[1])
     else:
-        print("ライブ動画IDを自動取得中...")
-        video_id = fetch_live_video_id()
-        if video_id:
-            print(f"ライブ動画を検出: {video_id}")
+        streams = fetch_streams()
+        if streams:
+            print("配信が見つかりました:")
+            for i, s in enumerate(streams, 1):
+                label = "[LIVE]" if s["live"] else "[予約済み]"
+                print(f"  {i}. {s['title']}  {label}")
+            video_id = None
+            while True:
+                choice = input(f"番号を選択 (1-{len(streams)} / 0でスキップ): ").strip()
+                if choice == "0":
+                    break
+                if choice.isdigit() and 1 <= int(choice) <= len(streams):
+                    video_id = streams[int(choice) - 1]["video_id"]
+                    break
+                print("無効な入力です。再入力してください。")
         else:
             url = input("URLを入力 (Enterでスキップ): ").strip()
             video_id = extract_video_id(url) if url else None
