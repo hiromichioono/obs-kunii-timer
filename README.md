@@ -146,7 +146,15 @@ http://Hiro-Mac.local:8080/commentary_input.html
 | `chat_overlay.html`  | チャット表示（右下） | キャンバスと同解像度（例: 1920 × 1080） |
 | `commentary_overlay.html` | 解説コンテンツ表示（右下） | キャンバスと同解像度（例: 1920 × 1080） |
 
-OBS でソース追加 → 「ブラウザ」→「ローカルファイル」にチェックを入れてファイルを選択します。
+OBS でソース追加 → 「ブラウザ」→「ローカルファイル」の**チェックを外し**、URL 欄に以下を入力します。
+
+| ソース | URL |
+|--------|-----|
+| タイマー | `http://localhost:8080/timer_overlay.html` |
+| チャット | `http://localhost:8080/chat_overlay.html` |
+| 解説 | `http://localhost:8080/commentary_overlay.html` |
+
+> `file://` ではなく HTTP URL を使う必要があります。`chat_server.py` 起動後に OBS ソースを更新してください。
 
 **5. 確認**
 
