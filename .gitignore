@@ -45,5 +45,3 @@ logs/
 # Environment variables (API keys etc.)
 .env
 
-# Local data files
-*.csv

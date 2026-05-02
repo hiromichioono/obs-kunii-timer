@@ -26,6 +26,7 @@ chat_enabled = False  # YouTube URL ありで起動した場合 True
 timer_active = False
 timer_start  = None   # float: time.time()
 timer_offset = 0.0    # 一時停止前までの累積秒数
+current_half = "前半"  # "前半" | "後半"
 
 
 def get_timer_seconds() -> float:
@@ -61,9 +62,18 @@ async def broadcast(message: str):
         )
 
 
+def _timer_state_msg() -> str:
+    return json.dumps({
+        "type":    "timer",
+        "seconds": int(get_timer_seconds()),
+        "active":  timer_active,
+        "chat":    chat_enabled,
+        "half":    current_half,
+    })
+
+
 async def broadcast_timer_state():
-    msg = json.dumps({"type": "timer", "seconds": int(get_timer_seconds()), "active": timer_active, "chat": chat_enabled})
-    await broadcast(msg)
+    await broadcast(_timer_state_msg())
 
 
 async def timer_tick():
@@ -149,17 +159,21 @@ async def start_chat(video_id: str):
 
 
 async def handler(websocket):
+    global current_half
     connected_clients.add(websocket)
     print(f"クライアント接続 (合計: {len(connected_clients)})")
-    # 接続直後に現在のタイマー状態を送信
-    await websocket.send(json.dumps({"type": "timer", "seconds": int(get_timer_seconds()), "active": timer_active, "chat": chat_enabled}))
+    # 接続直後に現在のタイマー状態を送信（新規クライアントのみ）
+    await websocket.send(_timer_state_msg())
     try:
         async for message in websocket:
             try:
                 data = json.loads(message)
                 if data.get("type") == "cmd":
                     action = data["action"]
-                    if action == "start_chat":
+                    if action == "set_half":
+                        current_half = data.get("half", "前半")
+                        await broadcast_timer_state()
+                    elif action == "start_chat":
                         video_id = data.get("video_id", "").strip()
                         if not video_id:
                             url = data.get("url", "").strip()

@@ -74,6 +74,11 @@
     #btn-stop:hover { background: color-mix(in srgb, var(--pink) 10%, transparent); }
     #btn-reset  { border-color: var(--navy); color: #8899cc; }
 
+    /* 前半/後半 */
+    #half-controls { display: flex; gap: 12px; }
+    .btn-half { border-color: var(--navy); color: #8899cc; }
+    .btn-half.active { background: var(--navy); color: #fff; }
+
     /* 時刻同期 */
     #sync-area {
       display: flex;
@@ -175,6 +180,11 @@
   <div id="display">00:00</div>
   <div id="state-label">STOPPED</div>
 
+  <div id="half-controls">
+    <button class="btn-half active" data-half="前半">前半</button>
+    <button class="btn-half"        data-half="後半">後半</button>
+  </div>
+
   <div id="controls">
     <button id="btn-start">キックオフ / 再開</button>
     <button id="btn-stop">一時停止</button>
@@ -248,6 +258,7 @@
           if (data.type === "timer") {
             renderTimer(data.seconds, data.active);
             chatAreaEl.style.display = data.chat ? "none" : "flex";
+            if (data.half) updateHalfButtons(data.half);
           } else if (data.type === "streams") {
             const list = document.getElementById("stream-list");
             list.innerHTML = "";
@@ -277,6 +288,16 @@
 
       ws.onerror = () => ws.close();
     }
+
+    function updateHalfButtons(half) {
+      document.querySelectorAll(".btn-half").forEach(btn => {
+        btn.classList.toggle("active", btn.dataset.half === half);
+      });
+    }
+
+    document.querySelectorAll(".btn-half").forEach(btn => {
+      btn.onclick = () => send({ type: "cmd", action: "set_half", half: btn.dataset.half });
+    });
 
     document.getElementById("btn-get-streams").onclick = () => send({ type: "cmd", action: "get_streams" });
 

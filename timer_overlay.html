@@ -37,6 +37,21 @@
       background: transparent;
     }
 
+    #time-row {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    #half-label {
+      font-size: 52px;
+      font-weight: bold;
+      letter-spacing: 0.1em;
+      color: var(--accent);
+      text-shadow: 0 0 20px color-mix(in srgb, var(--accent) 60%, transparent);
+      line-height: 1;
+    }
+
     #time {
       font-size: 120px;
       font-weight: bold;
@@ -88,7 +103,10 @@
         <div id="status-dot" class="disconnected"></div>
         <span id="status-label" class="label-off">OFFLINE</span>
       </div>
-      <div id="time">00:00</div>
+      <div id="time-row">
+        <div id="half-label">前半</div>
+        <div id="time">00:00</div>
+      </div>
       <div id="timer-status" class="empty">BREAK</div>
     </div>
   </div>
@@ -97,6 +115,7 @@
     const WS_URL = "ws://localhost:8765";
 
     const timeEl        = document.getElementById("time");
+    const halfLabelEl   = document.getElementById("half-label");
     const timerStatusEl = document.getElementById("timer-status");
     const statusDot     = document.getElementById("status-dot");
     const statusLabel   = document.getElementById("status-label");
@@ -153,6 +172,7 @@
           if (data.type !== "timer") return;
           totalSeconds = data.seconds;
           timerActive  = data.active;
+          if (data.half) halfLabelEl.textContent = data.half;
           renderTime();
           renderStatus();
         } catch (_) {}
