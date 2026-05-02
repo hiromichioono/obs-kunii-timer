@@ -108,34 +108,46 @@
     /* YouTube チャット開始 */
     #chat-area {
       display: flex;
+      flex-direction: column;
       align-items: center;
       gap: 8px;
       background: var(--surface);
       padding: 12px 16px;
       border-radius: 10px;
       border: 1px solid var(--border);
+      min-width: 320px;
     }
 
-    #chat-area label { font-size: 12px; color: #556; white-space: nowrap; }
-
-    #chat-url {
-      flex: 1;
-      min-width: 240px;
-      padding: 6px 8px;
-      background: #fff;
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      color: #111827;
-      font-size: 13px;
-    }
-
-    #btn-chat-start {
+    #btn-get-streams {
       padding: 6px 14px;
       border-color: var(--green);
       color: var(--green);
-      white-space: nowrap;
     }
-    #btn-chat-start:hover { background: color-mix(in srgb, var(--green) 10%, transparent); }
+    #btn-get-streams:hover { background: color-mix(in srgb, var(--green) 10%, transparent); }
+
+    #stream-list { display: flex; flex-direction: column; gap: 6px; width: 100%; }
+
+    .stream-btn {
+      padding: 8px 12px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: #fff;
+      color: #111827;
+      font-size: 13px;
+      cursor: pointer;
+      text-align: left;
+      transition: background 0.15s;
+    }
+    .stream-btn:hover { background: #d0daff; }
+    .badge {
+      font-size: 11px;
+      padding: 1px 6px;
+      border-radius: 4px;
+      margin-right: 6px;
+      font-weight: bold;
+    }
+    .badge-live     { background: color-mix(in srgb, var(--green) 20%, transparent); color: #16a34a; }
+    .badge-upcoming { background: color-mix(in srgb, var(--navy) 15%, transparent);  color: var(--navy); }
 
     /* 接続状態 */
     #status {
@@ -179,9 +191,8 @@
   </div>
 
   <div id="chat-area">
-    <label>YouTube URL:</label>
-    <input id="chat-url" type="text" placeholder="https://www.youtube.com/watch?v=..." />
-    <button id="btn-chat-start">チャット開始</button>
+    <button id="btn-get-streams">配信一覧を取得</button>
+    <div id="stream-list"></div>
   </div>
 
   <div id="status">
@@ -237,6 +248,24 @@
           if (data.type === "timer") {
             renderTimer(data.seconds, data.active);
             chatAreaEl.style.display = data.chat ? "none" : "flex";
+          } else if (data.type === "streams") {
+            const list = document.getElementById("stream-list");
+            list.innerHTML = "";
+            if (data.items.length === 0) {
+              list.textContent = "配信が見つかりません";
+              return;
+            }
+            data.items.forEach((s) => {
+              const btn = document.createElement("button");
+              btn.className = "stream-btn";
+              const badge = document.createElement("span");
+              badge.className = `badge ${s.live ? "badge-live" : "badge-upcoming"}`;
+              badge.textContent = s.live ? "LIVE" : "予約済み";
+              btn.appendChild(badge);
+              btn.appendChild(document.createTextNode(s.title));
+              btn.onclick = () => send({ type: "cmd", action: "start_chat", video_id: s.video_id });
+              list.appendChild(btn);
+            });
           }
         } catch (_) {}
       };
@@ -249,10 +278,7 @@
       ws.onerror = () => ws.close();
     }
 
-    document.getElementById("btn-chat-start").onclick = () => {
-      const url = document.getElementById("chat-url").value.trim();
-      if (url) send({ type: "cmd", action: "start_chat", url });
-    };
+    document.getElementById("btn-get-streams").onclick = () => send({ type: "cmd", action: "get_streams" });
 
     document.getElementById("btn-start").onclick = () => send({ type: "cmd", action: "start" });
     document.getElementById("btn-stop").onclick  = () => send({ type: "cmd", action: "stop" });
