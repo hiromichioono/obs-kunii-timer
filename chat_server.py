@@ -1,5 +1,6 @@
 import asyncio
 import signal
+import socket
 import websockets
 import pytchat
 import json
@@ -9,6 +10,9 @@ import sys
 import time
 import urllib.request
 import urllib.parse
+import threading
+import http.server
+import functools
 from concurrent.futures import ThreadPoolExecutor
 
 # --- ログ設定 ---
@@ -27,6 +31,9 @@ timer_active = False
 timer_start  = None   # float: time.time()
 timer_offset = 0.0    # 一時停止前までの累積秒数
 current_half = "前半"  # "前半" | "後半"
+
+# --- 解説コンテンツ ---
+commentary = {"score": "", "flow": "", "player": "", "term": ""}
 
 
 def get_timer_seconds() -> float:
@@ -55,9 +62,10 @@ def handle_command(action: str, seconds: float = 0) -> None:
 
 
 async def broadcast(message: str):
-    if connected_clients:
+    clients = list(connected_clients)  # イテレート中の変更を避けるためスナップショット
+    if clients:
         await asyncio.gather(
-            *[ws.send(message) for ws in connected_clients],
+            *[ws.send(message) for ws in clients],
             return_exceptions=True,
         )
 
@@ -80,6 +88,21 @@ async def timer_tick():
     while True:
         await asyncio.sleep(1)
         await broadcast_timer_state()
+
+
+def _start_http():
+    class _SilentHandler(http.server.SimpleHTTPRequestHandler):
+        def log_message(self, *args): pass
+
+        def do_GET(self):
+            if os.path.basename(self.path.split("?")[0]).startswith("."):
+                self.send_error(403)
+                return
+            super().do_GET()
+
+    handler = functools.partial(_SilentHandler, directory=BASE_DIR)
+    with http.server.HTTPServer(("0.0.0.0", 8080), handler) as httpd:
+        httpd.serve_forever()
 
 
 def load_env():
@@ -159,11 +182,12 @@ async def start_chat(video_id: str):
 
 
 async def handler(websocket):
-    global current_half
+    global current_half, commentary
     connected_clients.add(websocket)
     print(f"クライアント接続 (合計: {len(connected_clients)})")
-    # 接続直後に現在のタイマー状態を送信（新規クライアントのみ）
+    # 接続直後に現在の状態を送信（新規クライアントのみ）
     await websocket.send(_timer_state_msg())
+    await websocket.send(json.dumps({"type": "commentary", **commentary}))
     try:
         async for message in websocket:
             try:
@@ -180,6 +204,11 @@ async def handler(websocket):
                             video_id = extract_video_id(url) if url else ""
                         if video_id and not chat_enabled:
                             asyncio.create_task(start_chat(video_id))
+                    elif action == "set_commentary":
+                        field = data.get("field", "")
+                        if field in commentary:
+                            commentary[field] = data.get("value", "")
+                            await broadcast(json.dumps({"type": "commentary", **commentary}))
                     elif action == "get_streams":
                         items = fetch_streams()
                         await websocket.send(json.dumps({"type": "streams", "items": items}))
@@ -224,8 +253,12 @@ async def main(video_id: str | None):
     loop = asyncio.get_running_loop()
     loop.add_signal_handler(signal.SIGINT, lambda: (print("\n✅ 記録を終了しました。") or os._exit(0)))
 
-    async with websockets.serve(handler, "localhost", 8765):
-        print("WebSocketサーバー起動: ws://localhost:8765")
+    hostname = socket.gethostname()
+    threading.Thread(target=_start_http, daemon=True).start()
+
+    async with websockets.serve(handler, "0.0.0.0", 8765):
+        print(f"WebSocketサーバー起動: ws://localhost:8765")
+        print(f"タイマー操作（iPhone）: http://{hostname}:8080/timer_input.html")
         asyncio.create_task(timer_tick())
 
         if video_id is not None:

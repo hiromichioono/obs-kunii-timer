@@ -2,6 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Timer Control</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -22,10 +23,11 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
       min-height: 100vh;
-      gap: 24px;
-      padding: 24px;
+      gap: 20px;
+      padding: 24px 16px;
+      max-width: 480px;
+      margin: 0 auto;
     }
 
     h1 {
@@ -49,66 +51,92 @@
       color: #888;
     }
 
-    /* ボタングループ */
-    #controls {
-      display: flex;
-      gap: 12px;
-    }
-
+    /* ボタン共通 */
     button {
-      padding: 10px 20px;
+      padding: 14px 20px;
       border-radius: 8px;
       border: 1px solid var(--border);
       background: var(--surface);
       color: #111827;
-      font-size: 14px;
+      font-size: 16px;
       cursor: pointer;
       transition: background 0.15s, border-color 0.15s;
+      -webkit-tap-highlight-color: transparent;
     }
 
-    button:hover { background: #d0daff; border-color: #99b0d8; }
-
-    #btn-start  { border-color: var(--green); color: var(--green); }
-    #btn-start:hover { background: color-mix(in srgb, var(--green) 10%, transparent); }
-    #btn-stop   { border-color: var(--pink); color: var(--pink); }
-    #btn-stop:hover { background: color-mix(in srgb, var(--pink) 10%, transparent); }
-    #btn-reset  { border-color: var(--navy); color: #8899cc; }
+    button:active { opacity: 0.75; }
 
     /* 前半/後半 */
-    #half-controls { display: flex; gap: 12px; }
-    .btn-half { border-color: var(--navy); color: #8899cc; }
+    #half-controls {
+      display: flex;
+      gap: 12px;
+      width: 100%;
+    }
+
+    .btn-half { flex: 1; border-color: var(--navy); color: #8899cc; }
     .btn-half.active { background: var(--navy); color: #fff; }
+
+    /* メインコントロール */
+    #controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      width: 100%;
+    }
+
+    #btn-start {
+      flex: 1 1 100%;
+      border-color: var(--green);
+      color: var(--green);
+    }
+    #btn-start:active { background: color-mix(in srgb, var(--green) 15%, transparent); }
+
+    #btn-stop {
+      flex: 1;
+      border-color: var(--pink);
+      color: var(--pink);
+    }
+    #btn-stop:active { background: color-mix(in srgb, var(--pink) 15%, transparent); }
+
+    #btn-reset {
+      flex: 1;
+      border-color: var(--navy);
+      color: #8899cc;
+    }
 
     /* 時刻同期 */
     #sync-area {
       display: flex;
       align-items: center;
+      flex-wrap: wrap;
       gap: 8px;
       background: var(--surface);
       padding: 12px 16px;
       border-radius: 10px;
       border: 1px solid var(--border);
+      width: 100%;
     }
 
-    #sync-area label { font-size: 12px; color: #556; }
+    #sync-area label { font-size: 14px; color: #556; }
 
     #sync-area input {
-      width: 52px;
-      padding: 6px 8px;
+      width: 60px;
+      padding: 8px;
       background: #fff;
       border: 1px solid var(--border);
       border-radius: 6px;
       color: #111827;
-      font-size: 14px;
+      font-size: 16px;
       text-align: center;
     }
 
     #btn-sync {
-      padding: 6px 14px;
+      flex: 1;
+      padding: 10px 14px;
       border-color: var(--navy);
       color: #8899cc;
+      font-size: 15px;
     }
-    #btn-sync:hover { background: color-mix(in srgb, var(--navy) 30%, transparent); }
 
     /* YouTube チャット開始 */
     #chat-area {
@@ -120,30 +148,29 @@
       padding: 12px 16px;
       border-radius: 10px;
       border: 1px solid var(--border);
-      min-width: 320px;
+      width: 100%;
     }
 
     #btn-get-streams {
-      padding: 6px 14px;
+      width: 100%;
+      padding: 12px 14px;
       border-color: var(--green);
       color: var(--green);
     }
-    #btn-get-streams:hover { background: color-mix(in srgb, var(--green) 10%, transparent); }
 
     #stream-list { display: flex; flex-direction: column; gap: 6px; width: 100%; }
 
     .stream-btn {
-      padding: 8px 12px;
+      padding: 12px;
       border-radius: 6px;
       border: 1px solid var(--border);
       background: #fff;
       color: #111827;
-      font-size: 13px;
+      font-size: 14px;
       cursor: pointer;
       text-align: left;
-      transition: background 0.15s;
     }
-    .stream-btn:hover { background: #d0daff; }
+
     .badge {
       font-size: 11px;
       padding: 1px 6px;
@@ -193,9 +220,9 @@
 
   <div id="sync-area">
     <label>同期:</label>
-    <input id="sync-min" type="number" min="0" max="120" value="0" />
+    <input id="sync-min" type="number" min="0" max="120" value="0" inputmode="numeric" />
     <label>分</label>
-    <input id="sync-sec" type="number" min="0" max="59" value="0" />
+    <input id="sync-sec" type="number" min="0" max="59" value="0" inputmode="numeric" />
     <label>秒</label>
     <button id="btn-sync">時刻を同期</button>
   </div>
@@ -211,7 +238,8 @@
   </div>
 
   <script>
-    const WS_URL = "ws://localhost:8765";
+    // ローカルファイルで開く場合は localhost、HTTP 配信経由（iPhone 等）はアクセス元ホストを使用
+    const WS_URL = `ws://${location.hostname || "localhost"}:8765`;
 
     const displayEl    = document.getElementById("display");
     const stateLabelEl = document.getElementById("state-label");

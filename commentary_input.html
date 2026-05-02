@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>解説入力</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --pink:    #e91e83;
+      --navy:    #002366;
+      --green:   #4ade80;
+      --bg:      #f0f4ff;
+      --surface: #e2eaff;
+      --border:  #b8c8e8;
+    }
+
+    body {
+      background: var(--bg);
+      color: #111827;
+      font-family: sans-serif;
+      padding: 16px;
+      max-width: 480px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      font-size: 13px;
+      letter-spacing: 0.2em;
+      color: var(--pink);
+      text-transform: uppercase;
+      margin-bottom: 14px;
+    }
+
+    /* 接続ステータス */
+    #status {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      margin-bottom: 14px;
+    }
+
+    #status-dot { width: 8px; height: 8px; border-radius: 50%; }
+    .connected    { background: var(--green); box-shadow: 0 0 6px var(--green); }
+    .disconnected { background: var(--pink);  box-shadow: 0 0 6px var(--pink); }
+    .label-on  { color: var(--green); }
+    .label-off { color: var(--pink); }
+
+    /* 入力セクション */
+    .section {
+      background: var(--surface);
+      padding: 12px 14px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      margin-bottom: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .section label {
+      font-size: 11px;
+      color: #556;
+      letter-spacing: 0.05em;
+    }
+
+    .section input,
+    .section textarea {
+      width: 100%;
+      padding: 8px 10px;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: #111827;
+      font-size: 15px;
+      font-family: sans-serif;
+      resize: vertical;
+    }
+
+    .section textarea { min-height: 72px; }
+
+    .btn-send {
+      padding: 11px;
+      border-radius: 8px;
+      border: 1px solid var(--navy);
+      color: #8899cc;
+      background: var(--surface);
+      font-size: 14px;
+      cursor: pointer;
+      width: 100%;
+      transition: background 0.1s, color 0.1s, border-color 0.1s;
+    }
+
+    .btn-send:active { background: var(--navy); color: #fff; }
+
+    .sent-flash {
+      border-color: var(--green) !important;
+      color: var(--green) !important;
+    }
+  </style>
+</head>
+<body>
+  <h1>解説入力</h1>
+
+  <div id="status">
+    <div id="status-dot" class="disconnected"></div>
+    <span id="status-label" class="label-off">OFFLINE</span>
+  </div>
+
+  <div class="section">
+    <label>スコア予想</label>
+    <input id="input-score" type="text" placeholder="例: 日本 2-1 スペイン" />
+    <button class="btn-send" data-field="score">送信</button>
+  </div>
+
+  <div class="section">
+    <label>試合展開の予想</label>
+    <textarea id="input-flow" placeholder="例: 前半は守備的に構え、後半カウンターで勝負をかける展開。"></textarea>
+    <button class="btn-send" data-field="flow">送信</button>
+  </div>
+
+  <div class="section">
+    <label>注目選手と見どころ</label>
+    <textarea id="input-player" placeholder="例: 久保建英 — ドリブル突破に注目。相手DFとの1対1が鍵になる。"></textarea>
+    <button class="btn-send" data-field="player">送信</button>
+  </div>
+
+  <div class="section">
+    <label>専門用語の解説</label>
+    <textarea id="input-term" placeholder="例: プレス：相手ボール保持者に素早く寄せ、パスコースを限定する守備戦術。"></textarea>
+    <button class="btn-send" data-field="term">送信</button>
+  </div>
+
+  <script>
+    const WS_URL = `ws://${location.hostname || "localhost"}:8765`;
+
+    const statusDot   = document.getElementById("status-dot");
+    const statusLabel = document.getElementById("status-label");
+
+    let ws             = null;
+    let reconnectTimer = null;
+
+    function setStatus(online) {
+      statusDot.className     = online ? "connected"   : "disconnected";
+      statusLabel.className   = online ? "label-on"    : "label-off";
+      statusLabel.textContent = online ? "CONNECTED"   : "OFFLINE";
+    }
+
+    function send(obj) {
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify(obj));
+      }
+    }
+
+    function connect() {
+      ws = new WebSocket(WS_URL);
+      ws.onopen  = () => { setStatus(true); clearTimeout(reconnectTimer); };
+      ws.onclose = () => { setStatus(false); reconnectTimer = setTimeout(connect, 3000); };
+      ws.onerror = () => ws.close();
+    }
+
+    document.querySelectorAll(".btn-send").forEach(btn => {
+      btn.onclick = () => {
+        const field = btn.dataset.field;
+        const input = document.getElementById(`input-${field}`);
+        send({ type: "cmd", action: "set_commentary", field, value: input.value });
+        btn.classList.add("sent-flash");
+        setTimeout(() => btn.classList.remove("sent-flash"), 600);
+      };
+    });
+
+    connect();
+  </script>
+</body>
+</html>
