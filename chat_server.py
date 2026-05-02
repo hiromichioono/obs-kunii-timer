@@ -1,4 +1,5 @@
 import asyncio
+import signal
 import websockets
 import pytchat
 import json
@@ -142,6 +143,9 @@ async def start_chat(video_id: str):
     finally:
         chat_enabled = False
         await broadcast_timer_state()
+        if os.path.exists(filename) and os.path.getsize(filename) == 0:
+            os.remove(filename)
+            print("メッセージなし。ログファイルを削除しました。")
 
 
 async def handler(websocket):
@@ -203,6 +207,9 @@ def fetch_chat(chat, loop: asyncio.AbstractEventLoop, log_file):
 
 
 async def main(video_id: str | None):
+    loop = asyncio.get_running_loop()
+    loop.add_signal_handler(signal.SIGINT, lambda: (print("\n✅ 記録を終了しました。") or os._exit(0)))
+
     async with websockets.serve(handler, "localhost", 8765):
         print("WebSocketサーバー起動: ws://localhost:8765")
         asyncio.create_task(timer_tick())
@@ -217,29 +224,30 @@ async def main(video_id: str | None):
 
 if __name__ == "__main__":
     load_env()
-    if len(sys.argv) > 1:
-        video_id = extract_video_id(sys.argv[1])
-    else:
-        streams = fetch_streams()
-        if streams:
-            print("配信が見つかりました:")
-            for i, s in enumerate(streams, 1):
-                label = "[LIVE]" if s["live"] else "[予約済み]"
-                print(f"  {i}. {s['title']}  {label}")
-            video_id = None
-            while True:
-                choice = input(f"番号を選択 (1-{len(streams)} / 0でスキップ): ").strip()
-                if choice == "0":
-                    break
-                if choice.isdigit() and 1 <= int(choice) <= len(streams):
-                    video_id = streams[int(choice) - 1]["video_id"]
-                    break
-                print("無効な入力です。再入力してください。")
-        else:
-            url = input("URLを入力 (Enterでスキップ): ").strip()
-            video_id = extract_video_id(url) if url else None
-
     try:
+        if len(sys.argv) > 1:
+            video_id = extract_video_id(sys.argv[1])
+        else:
+            streams = fetch_streams()
+            if streams:
+                print("配信が見つかりました:")
+                for i, s in enumerate(streams, 1):
+                    label = "[LIVE]" if s["live"] else "[予約済み]"
+                    print(f"  {i}. {s['title']}  {label}")
+                video_id = None
+                while True:
+                    choice = input(f"番号を選択 (1-{len(streams)} / 0でスキップ): ").strip()
+                    if choice == "0":
+                        break
+                    if choice.isdigit() and 1 <= int(choice) <= len(streams):
+                        video_id = streams[int(choice) - 1]["video_id"]
+                        break
+                    print("無効な入力です。再入力してください。")
+            else:
+                url = input("URLを入力 (Enterでスキップ): ").strip()
+                video_id = extract_video_id(url) if url else None
+
         asyncio.run(main(video_id))
     except KeyboardInterrupt:
         print("\n✅ 記録を終了しました。")
+        os._exit(0)
