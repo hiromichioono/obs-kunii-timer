@@ -112,7 +112,7 @@
   </div>
 
   <script>
-    const WS_URL = "ws://localhost:8765";
+    const WS_URL = `ws://${location.hostname || "localhost"}:8765`;
 
     const timeEl        = document.getElementById("time");
     const halfLabelEl   = document.getElementById("half-label");

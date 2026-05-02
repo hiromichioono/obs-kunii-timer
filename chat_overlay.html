@@ -133,7 +133,7 @@
   </div>
 
   <script>
-    const WS_URL      = "ws://localhost:8765";
+    const WS_URL      = `ws://${location.hostname || "localhost"}:8765`;
     const MAX_MESSAGES = 6;
 
     const messagesEl   = document.getElementById("messages");

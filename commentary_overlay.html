@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>Commentary Overlay</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --accent:    #002366;
+      --color-off: #e91e83;
+    }
+
+    body {
+      background: transparent;
+      overflow: hidden;
+      font-family: sans-serif;
+    }
+
+    #app {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: flex-start;
+      justify-content: flex-end;
+      padding: 20px;
+      pointer-events: none;
+      user-select: none;
+    }
+
+    #panel {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      max-width: 420px;
+      width: 100%;
+    }
+
+    .item {
+      background: color-mix(in srgb, var(--accent) 85%, transparent);
+      border-left: 4px solid color-mix(in srgb, var(--accent) 50%, #60d0ff);
+      padding: 8px 12px;
+      border-radius: 6px;
+    }
+
+    .item-label {
+      font-size: 10px;
+      letter-spacing: 0.15em;
+      color: color-mix(in srgb, #fff 60%, transparent);
+      text-transform: uppercase;
+      margin-bottom: 3px;
+    }
+
+    .item-value {
+      font-size: 16px;
+      font-weight: bold;
+      color: #fff;
+      line-height: 1.4;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    .item[hidden] { display: none; }
+
+    /* 接続ステータス */
+    #status {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      align-self: flex-end;
+    }
+
+    #status-dot { width: 8px; height: 8px; border-radius: 50%; }
+    .connected    { background: #22c55e; box-shadow: 0 0 6px #22c55e; }
+    .disconnected { background: var(--color-off); box-shadow: 0 0 6px var(--color-off); }
+    #status-label { font-size: 11px; }
+    .label-on  { color: #22c55e; }
+    .label-off { color: var(--color-off); }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div id="panel">
+      <div id="item-score" class="item" hidden>
+        <div class="item-label">スコア予想</div>
+        <div class="item-value" id="val-score"></div>
+      </div>
+      <div id="item-flow" class="item" hidden>
+        <div class="item-label">試合展開の予想</div>
+        <div class="item-value" id="val-flow"></div>
+      </div>
+      <div id="item-player" class="item" hidden>
+        <div class="item-label">注目選手と見どころ</div>
+        <div class="item-value" id="val-player"></div>
+      </div>
+      <div id="item-term" class="item" hidden>
+        <div class="item-label">専門用語の解説</div>
+        <div class="item-value" id="val-term"></div>
+      </div>
+      <div id="status">
+        <div id="status-dot" class="disconnected"></div>
+        <span id="status-label" class="label-off">OFFLINE</span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const WS_URL = `ws://${location.hostname || "localhost"}:8765`;
+
+    const statusDot   = document.getElementById("status-dot");
+    const statusLabel = document.getElementById("status-label");
+
+    const FIELDS = ["score", "flow", "player", "term"];
+
+    let reconnectTimer = null;
+
+    function setStatus(online) {
+      statusDot.className   = online ? "connected"   : "disconnected";
+      statusLabel.className = online ? "label-on"    : "label-off";
+      statusLabel.textContent = online ? "CONNECTED" : "OFFLINE";
+    }
+
+    function applyCommentary(data) {
+      FIELDS.forEach(f => {
+        const val = data[f] || "";
+        document.getElementById(`val-${f}`).textContent = val;
+        document.getElementById(`item-${f}`).hidden = val === "";
+      });
+    }
+
+    function connect() {
+      const ws = new WebSocket(WS_URL);
+
+      ws.onopen = () => {
+        setStatus(true);
+        clearTimeout(reconnectTimer);
+      };
+
+      ws.onmessage = (e) => {
+        try {
+          const data = JSON.parse(e.data);
+          if (data.type === "commentary") applyCommentary(data);
+        } catch (_) {}
+      };
+
+      ws.onclose = () => {
+        setStatus(false);
+        reconnectTimer = setTimeout(connect, 3000);
+      };
+
+      ws.onerror = () => ws.close();
+    }
+
+    connect();
+  </script>
+</body>
+</html>
