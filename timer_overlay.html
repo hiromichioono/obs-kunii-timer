@@ -24,14 +24,14 @@
       display: flex;
       align-items: flex-start;
       justify-content: flex-start;
-      padding: 16px;
+      padding: 20px;
       pointer-events: none;
       user-select: none;
     }
 
     #timer-card {
       position: absolute;
-      top: 0;
+      top: 20px;
       left: 0;
       display: inline-flex;
       flex-direction: column;
@@ -72,7 +72,7 @@
       position: absolute;
       left: 50%;
       transform: translateX(-50%);
-      top: 11px;
+      top: 20px;
       display: flex;
       align-items: center;
       gap: 12px;
@@ -94,7 +94,7 @@
 
     #timer-status {
       position: absolute;
-      top: -20px;
+      top: -36px;
       right: 0;
       z-index: 1;
       font-size: 36px;
@@ -108,6 +108,9 @@
 
     /* 接続ステータス */
     #status {
+      position: absolute;
+      top: 0;
+      left: 0;
       display: flex;
       align-items: center;
       gap: 4px;
@@ -130,11 +133,11 @@
 <body>
   <div id="app">
     <div id="top-row">
+      <div id="status">
+        <div id="status-dot" class="disconnected"></div>
+        <span id="status-label" class="label-off">OFFLINE</span>
+      </div>
       <div id="timer-card">
-        <div id="status">
-          <div id="status-dot" class="disconnected"></div>
-          <span id="status-label" class="label-off">OFFLINE</span>
-        </div>
         <div id="time-row">
           <div id="half-label">前半</div>
           <div id="time">00:00</div>

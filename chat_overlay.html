@@ -25,13 +25,13 @@
       display: flex;
       flex-direction: column;
       justify-content: flex-end;
-      padding: 16px;
+      padding: 20px;
       pointer-events: none;
       user-select: none;
     }
 
     /* チャットエリア（右下） */
-    #chat-area {
+    #messages {
       align-self: flex-end;
       width: 480px;
       display: flex;
@@ -74,8 +74,7 @@
       display: flex;
       align-items: center;
       gap: 4px;
-      justify-content: flex-end;
-      margin-top: 4px;
+      align-self: flex-end;
     }
 
     #status-dot {
@@ -123,12 +122,10 @@
 </head>
 <body>
   <div id="app">
-    <div id="chat-area">
-      <div id="messages"></div>
-      <div id="status">
-        <div id="status-dot" class="disconnected"></div>
-        <span id="status-label" class="label-off">OFFLINE</span>
-      </div>
+    <div id="messages"></div>
+    <div id="status">
+      <div id="status-dot" class="disconnected"></div>
+      <span id="status-label" class="label-off">OFFLINE</span>
     </div>
   </div>
 
