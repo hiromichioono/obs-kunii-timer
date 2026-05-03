@@ -13,6 +13,8 @@ import urllib.parse
 import threading
 import http.server
 import functools
+import random
+import hashlib
 from concurrent.futures import ThreadPoolExecutor
 
 # --- ログ設定 ---
@@ -37,6 +39,10 @@ commentary = {"score": "", "flow": "", "player": "", "term": ""}
 
 # --- スコア ---
 score = {"home": "", "away": "", "home_goals": 0, "away_goals": 0}
+
+# --- チャット色・連投対策 ---
+SESSION_SALT = str(random.randint(0, 999999))
+last_message_time: dict = {}  # channel_id -> float timestamp
 
 
 def get_timer_seconds() -> float:
@@ -246,10 +252,23 @@ async def handler(websocket):
 
 # --- pytchat チャット取得（別スレッドで実行）---
 def fetch_chat(chat, loop: asyncio.AbstractEventLoop, log_file):
+    owner_id = os.environ.get("YOUTUBE_CHANNEL_ID", "")
     while chat.is_alive():
         for c in chat.get().sync_items():
             amount = getattr(c, 'amountValue', 0)
             currency = getattr(c, 'currency', '')
+            channel_id = c.author.channelId
+            is_superchat = bool(amount)
+            is_owner = bool(owner_id) and channel_id == owner_id
+
+            # 連投対策（スパチャ・配信者は免除）
+            if not is_superchat and not is_owner:
+                now_ts = time.time()
+                if channel_id in last_message_time and now_ts - last_message_time[channel_id] < 30:
+                    continue
+                last_message_time[channel_id] = now_ts
+
+            color_index = int(hashlib.md5((channel_id + SESSION_SALT).encode()).hexdigest(), 16) % 7
 
             if amount:
                 log_line = f"[{c.datetime}] 💰{c.author.name} ({currency}{amount}): {c.message}\n"
@@ -263,6 +282,7 @@ def fetch_chat(chat, loop: asyncio.AbstractEventLoop, log_file):
                 "author": c.author.name,
                 "message": c.message or "",
                 "datetime": c.datetime,
+                "color_index": color_index,
             }
             if amount:
                 payload["superchat"] = {"amount": amount, "currency": currency}
