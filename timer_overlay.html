@@ -30,7 +30,9 @@
     }
 
     #timer-card {
-      position: relative;
+      position: absolute;
+      top: 0;
+      left: 0;
       display: inline-flex;
       flex-direction: column;
       align-items: flex-start;
@@ -61,6 +63,35 @@
       line-height: 1;
     }
 
+    #top-row {
+      position: relative;
+      width: 100%;
+    }
+
+    #score-section {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      top: 11px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 52px;
+      font-weight: bold;
+      color: var(--accent);
+      text-shadow: 0 0 20px color-mix(in srgb, var(--accent) 60%, transparent);
+      line-height: 1;
+      max-width: calc(100% - 32px);
+    }
+
+    #home-name, #away-name {
+      font-size: 40px;
+      max-width: 7em;
+      min-width: 0;
+    }
+
+    #score-nums { font-size: 120px; }
+
     #timer-status {
       position: absolute;
       top: -20px;
@@ -88,7 +119,7 @@
       border-radius: 50%;
     }
 
-    #status-label { font-size: 11px; }
+    #status-label { font-size: var(--font-sm); line-height: 1; }
 
     .connected    { background: #22c55e; box-shadow: 0 0 6px #22c55e; }
     .disconnected { background: var(--color-off); box-shadow: 0 0 6px var(--color-off); }
@@ -98,27 +129,39 @@
 </head>
 <body>
   <div id="app">
-    <div id="timer-card">
-      <div id="status">
-        <div id="status-dot" class="disconnected"></div>
-        <span id="status-label" class="label-off">OFFLINE</span>
+    <div id="top-row">
+      <div id="timer-card">
+        <div id="status">
+          <div id="status-dot" class="disconnected"></div>
+          <span id="status-label" class="label-off">OFFLINE</span>
+        </div>
+        <div id="time-row">
+          <div id="half-label">前半</div>
+          <div id="time">00:00</div>
+        </div>
+        <div id="timer-status" class="empty">BREAK</div>
       </div>
-      <div id="time-row">
-        <div id="half-label">前半</div>
-        <div id="time">00:00</div>
+      <div id="score-section" hidden>
+        <span id="home-name"></span>
+        <span id="score-nums"><span id="home-goals">0</span> - <span id="away-goals">0</span></span>
+        <span id="away-name"></span>
       </div>
-      <div id="timer-status" class="empty">BREAK</div>
     </div>
   </div>
 
   <script>
     const WS_URL = `ws://${location.hostname || "localhost"}:8765`;
 
-    const timeEl        = document.getElementById("time");
-    const halfLabelEl   = document.getElementById("half-label");
-    const timerStatusEl = document.getElementById("timer-status");
-    const statusDot     = document.getElementById("status-dot");
-    const statusLabel   = document.getElementById("status-label");
+    const timeEl         = document.getElementById("time");
+    const halfLabelEl    = document.getElementById("half-label");
+    const timerStatusEl  = document.getElementById("timer-status");
+    const statusDot      = document.getElementById("status-dot");
+    const statusLabel    = document.getElementById("status-label");
+    const scoreSectionEl = document.getElementById("score-section");
+    const homeNameEl     = document.getElementById("home-name");
+    const awayNameEl     = document.getElementById("away-name");
+    const homeGoalsEl    = document.getElementById("home-goals");
+    const awayGoalsEl    = document.getElementById("away-goals");
 
     let timerActive    = false;
     let totalSeconds   = 0;
@@ -173,6 +216,13 @@
           totalSeconds = data.seconds;
           timerActive  = data.active;
           if (data.half) halfLabelEl.textContent = data.half;
+          if (data.home !== undefined) {
+            homeNameEl.textContent  = data.home;
+            awayNameEl.textContent  = data.away;
+            homeGoalsEl.textContent = data.home_goals;
+            awayGoalsEl.textContent = data.away_goals;
+            scoreSectionEl.hidden   = !data.home && !data.away;
+          }
           renderTime();
           renderStatus();
         } catch (_) {}

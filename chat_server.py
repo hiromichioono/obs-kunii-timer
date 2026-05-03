@@ -35,6 +35,9 @@ current_half = "前半"  # "前半" | "後半"
 # --- 解説コンテンツ ---
 commentary = {"score": "", "flow": "", "player": "", "term": ""}
 
+# --- スコア ---
+score = {"home": "", "away": "", "home_goals": 0, "away_goals": 0}
+
 
 def get_timer_seconds() -> float:
     if timer_active and timer_start is not None:
@@ -77,6 +80,7 @@ def _timer_state_msg() -> str:
         "active":  timer_active,
         "chat":    chat_enabled,
         "half":    current_half,
+        **score,
     })
 
 
@@ -182,7 +186,7 @@ async def start_chat(video_id: str):
 
 
 async def handler(websocket):
-    global current_half, commentary
+    global current_half, commentary, score
     connected_clients.add(websocket)
     print(f"クライアント接続 (合計: {len(connected_clients)})")
     # 接続直後に現在の状態を送信（新規クライアントのみ）
@@ -196,6 +200,24 @@ async def handler(websocket):
                     action = data["action"]
                     if action == "set_half":
                         current_half = data.get("half", "前半")
+                        await broadcast_timer_state()
+                    elif action == "set_teams":
+                        score["home"] = data.get("home", "")
+                        score["away"] = data.get("away", "")
+                        await broadcast_timer_state()
+                    elif action == "goal":
+                        team = data.get("team", "")
+                        if team == "home":
+                            score["home_goals"] += 1
+                        elif team == "away":
+                            score["away_goals"] += 1
+                        await broadcast_timer_state()
+                    elif action == "undo_goal":
+                        team = data.get("team", "")
+                        if team == "home" and score["home_goals"] > 0:
+                            score["home_goals"] -= 1
+                        elif team == "away" and score["away_goals"] > 0:
+                            score["away_goals"] -= 1
                         await broadcast_timer_state()
                     elif action == "start_chat":
                         video_id = data.get("video_id", "").strip()

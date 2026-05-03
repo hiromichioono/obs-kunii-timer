@@ -104,6 +104,82 @@
       color: #8899cc;
     }
 
+    /* スコア */
+    #score-area {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      background: var(--surface);
+      padding: 12px 16px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      width: 100%;
+    }
+
+    #teams-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    #teams-row input {
+      flex: 1;
+      padding: 8px;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: #111827;
+      font-size: 16px;
+    }
+
+    #teams-row span { font-size: 14px; color: #556; }
+
+    #btn-set-teams {
+      width: 100%;
+      padding: 10px 14px;
+      border-color: var(--navy);
+      color: #8899cc;
+      font-size: 15px;
+    }
+
+    #goals-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+    }
+
+    .goal-ctrl {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .goal-ctrl span {
+      font-size: 32px;
+      font-weight: bold;
+      color: var(--navy);
+      min-width: 32px;
+      text-align: center;
+    }
+
+    #score-sep {
+      font-size: 32px;
+      font-weight: bold;
+      color: #556;
+    }
+
+    .btn-goal-plus, .btn-goal-minus {
+      width: 48px;
+      height: 48px;
+      font-size: 24px;
+      padding: 0;
+      border-radius: 8px;
+    }
+
+    .btn-goal-plus  { border-color: var(--green); color: var(--green); }
+    .btn-goal-minus { border-color: var(--pink);  color: var(--pink); }
+
     /* 時刻同期 */
     #sync-area {
       display: flex;
@@ -227,6 +303,28 @@
     <button id="btn-sync">時刻を同期</button>
   </div>
 
+  <div id="score-area">
+    <div id="teams-row">
+      <input id="input-home" type="text" placeholder="ホーム" />
+      <span>vs</span>
+      <input id="input-away" type="text" placeholder="アウェイ" />
+    </div>
+    <button id="btn-set-teams">セット</button>
+    <div id="goals-row">
+      <div class="goal-ctrl">
+        <button class="btn-goal-plus" data-team="home">+</button>
+        <span id="disp-home-goals">0</span>
+        <button class="btn-goal-minus" data-team="home">−</button>
+      </div>
+      <div id="score-sep">-</div>
+      <div class="goal-ctrl">
+        <button class="btn-goal-plus" data-team="away">+</button>
+        <span id="disp-away-goals">0</span>
+        <button class="btn-goal-minus" data-team="away">−</button>
+      </div>
+    </div>
+  </div>
+
   <div id="chat-area">
     <button id="btn-get-streams">配信一覧を取得</button>
     <div id="stream-list"></div>
@@ -287,6 +385,10 @@
             renderTimer(data.seconds, data.active);
             chatAreaEl.style.display = data.chat ? "none" : "flex";
             if (data.half) updateHalfButtons(data.half);
+            if (data.home !== undefined) {
+              document.getElementById("disp-home-goals").textContent = data.home_goals;
+              document.getElementById("disp-away-goals").textContent = data.away_goals;
+            }
           } else if (data.type === "streams") {
             const list = document.getElementById("stream-list");
             list.innerHTML = "";
@@ -325,6 +427,21 @@
 
     document.querySelectorAll(".btn-half").forEach(btn => {
       btn.onclick = () => send({ type: "cmd", action: "set_half", half: btn.dataset.half });
+    });
+
+    document.getElementById("btn-set-teams").onclick = () => {
+      send({ type: "cmd", action: "set_teams",
+        home: document.getElementById("input-home").value.trim(),
+        away: document.getElementById("input-away").value.trim(),
+      });
+    };
+
+    document.querySelectorAll(".btn-goal-plus").forEach(btn => {
+      btn.onclick = () => send({ type: "cmd", action: "goal", team: btn.dataset.team });
+    });
+
+    document.querySelectorAll(".btn-goal-minus").forEach(btn => {
+      btn.onclick = () => send({ type: "cmd", action: "undo_goal", team: btn.dataset.team });
     });
 
     document.getElementById("btn-get-streams").onclick = () => send({ type: "cmd", action: "get_streams" });
