@@ -23,8 +23,8 @@
       position: fixed;
       inset: 0;
       display: flex;
-      align-items: flex-start;
-      justify-content: flex-end;
+      flex-direction: column;
+      align-items: flex-end;
       padding: 20px;
       pointer-events: none;
       user-select: none;
@@ -69,7 +69,6 @@
       display: flex;
       align-items: center;
       gap: 4px;
-      align-self: flex-end;
     }
 
     #status-dot { width: 8px; height: 8px; border-radius: 50%; }
@@ -82,11 +81,11 @@
 </head>
 <body>
   <div id="app">
+    <div id="status">
+      <div id="status-dot" class="disconnected"></div>
+      <span id="status-label" class="label-off">OFFLINE</span>
+    </div>
     <div id="panel">
-      <div id="status">
-        <div id="status-dot" class="disconnected"></div>
-        <span id="status-label" class="label-off">OFFLINE</span>
-      </div>
       <div id="item-score" class="item" hidden>
         <div class="item-label">スコア予想</div>
         <div class="item-value" id="val-score"></div>
