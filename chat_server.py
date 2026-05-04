@@ -1,4 +1,5 @@
 import asyncio
+import signal
 import socket
 import websockets
 import pytchat
@@ -298,6 +299,16 @@ def fetch_chat(chat, loop: asyncio.AbstractEventLoop, log_file):
 
 
 async def main(video_id: str | None):
+    loop = asyncio.get_running_loop()
+    stop_event = asyncio.Event()
+
+    def _on_sigint():
+        if not stop_event.is_set():
+            print("\n✅ 記録を終了しました。", flush=True)
+            stop_event.set()
+
+    loop.add_signal_handler(signal.SIGINT, _on_sigint)
+
     hostname = socket.gethostname()
     threading.Thread(target=_start_http, daemon=True).start()
 
@@ -311,7 +322,7 @@ async def main(video_id: str | None):
         else:
             print("タイマーのみモードで起動（チャットなし）")
 
-        await asyncio.Future()  # 無限待機（チャット終了後もサーバーを維持）
+        await stop_event.wait()  # Ctrl+C まで待機
 
 
 if __name__ == "__main__":
@@ -341,5 +352,4 @@ if __name__ == "__main__":
 
         asyncio.run(main(video_id))
     except KeyboardInterrupt:
-        print("\n✅ 記録を終了しました。")
-        sys.exit(0)
+        print("\n✅ 記録を終了しました。")  # signal handler 未対応環境のフォールバック
