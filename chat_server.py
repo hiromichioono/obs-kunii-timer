@@ -272,10 +272,17 @@ async def handler(websocket):
                     elif action == "get_streams":
                         items = fetch_streams()
                         await websocket.send(json.dumps({"type": "streams", "items": items}))
+                    elif action == "test_comment":
+                        msg = {"author": "テスト太郎", "message": data.get("message", "テストコメントです！"), "datetime": str(datetime.datetime.now()), "color_index": random.randint(0, 6)}
+                        await broadcast(json.dumps(msg, ensure_ascii=False))
+                    elif action == "test_superchat":
+                        amount = int(data.get("amount", 500))
+                        msg = {"author": "テスト太郎", "message": data.get("message", f"テストスパチャ {amount}円！"), "datetime": str(datetime.datetime.now()), "color_index": 0, "superchat": {"amount": amount, "currency": "¥"}}
+                        await broadcast(json.dumps(msg, ensure_ascii=False))
                     else:
                         handle_command(action, data.get("seconds", 0))
                         await broadcast_timer_state()
-            except (json.JSONDecodeError, KeyError) as e:
+            except (json.JSONDecodeError, KeyError, ValueError) as e:
                 print(f"メッセージ処理エラー: {e}")
     finally:
         state.connected_clients.discard(websocket)

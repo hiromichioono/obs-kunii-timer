@@ -17,6 +17,7 @@ obs-kunii-timer/
 ├── ticker_messages.csv       # テロップメッセージ定義（編集可）
 ├── commentary_input.html     # 解説入力パネル（iPhone のブラウザで開く）
 ├── commentary_overlay.html   # OBS ブラウザソース用解説コンテンツオーバーレイ
+├── test_chat.html            # チャット・スーパーチャット動作確認用テストパネル（開発用）
 ├── .env                      # APIキー・チャンネルID設定（.gitignore 対象）
 ├── project-tool-key_secret.json  # Google API OAuth2 認証ファイル（.gitignore 対象・未実装）
 └── logs/                     # チャットログ保存先（.gitignore 対象）
