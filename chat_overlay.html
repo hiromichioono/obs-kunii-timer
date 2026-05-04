@@ -294,6 +294,11 @@
             return;
           }
 
+          if (data.type === "stats") {
+            enqueue(data.message, THANKS_COLOR);
+            return;
+          }
+
           if (!data.author) return;
 
           const color = COLORS[data.color_index ?? 0];

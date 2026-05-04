@@ -49,6 +49,7 @@ class AppState:
     chat_enabled: bool = False
     connected_clients: set = field(default_factory=set)
     last_message_time: dict = field(default_factory=dict)
+    seen_channels: set = field(default_factory=set)  # 初コメ検出
 
 
 state = AppState()
@@ -274,6 +275,14 @@ def fetch_chat(chat, loop: asyncio.AbstractEventLoop, log_file):
                 if channel_id in state.last_message_time and now_ts - state.last_message_time[channel_id] < CHAT_COOLDOWN:
                     continue
                 state.last_message_time[channel_id] = now_ts
+
+            # 初コメ検出
+            if channel_id not in state.seen_channels:
+                state.seen_channels.add(channel_id)
+                first_msg = f"👋 {c.author.name}さん、はじめてのコメントありがとう！"
+                asyncio.run_coroutine_threadsafe(
+                    broadcast(json.dumps({"type": "stats", "message": first_msg}, ensure_ascii=False)), loop
+                )
 
             color_index = int(hashlib.md5((channel_id + SESSION_SALT).encode()).hexdigest(), 16) % CHAT_COLOR_COUNT
 
