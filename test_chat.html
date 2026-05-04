@@ -69,10 +69,14 @@
     const statusEl = document.getElementById("status");
     let ws = null;
 
+    function setButtons(enabled) {
+      document.querySelectorAll("button").forEach(b => b.disabled = !enabled);
+    }
+
     function connect() {
       ws = new WebSocket(WS_URL);
-      ws.onopen  = () => { statusEl.textContent = "CONNECTED"; statusEl.className = "st-ok"; };
-      ws.onclose = () => { statusEl.textContent = "OFFLINE";   statusEl.className = "st-ng"; setTimeout(connect, 3000); };
+      ws.onopen  = () => { statusEl.textContent = "CONNECTED"; statusEl.className = "st-ok";  setButtons(true); };
+      ws.onclose = () => { statusEl.textContent = "OFFLINE";   statusEl.className = "st-ng"; setButtons(false); setTimeout(connect, 3000); };
       ws.onerror = () => ws.close();
     }
 
