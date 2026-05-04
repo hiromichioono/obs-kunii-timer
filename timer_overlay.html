@@ -133,7 +133,7 @@
     #goal-flash {
       position: absolute;
       inset: 0;
-      background: #22c55e;
+      background: #FFD700;
       opacity: 0;
       pointer-events: none;
     }
@@ -147,28 +147,28 @@
 
     #goal-banner {
       position: absolute;
-      top: 0;
+      top: 50%;
       left: 0;
       right: 0;
       display: flex;
       justify-content: center;
-      transform: translateY(-100%);
+      transform: translateY(calc(-50% - 100vh));
       pointer-events: none;
     }
     #goal-banner.active {
       animation: goal-banner 3s ease-in-out forwards;
     }
     @keyframes goal-banner {
-      0%   { transform: translateY(-100%); }
-      15%  { transform: translateY(0); }
-      80%  { transform: translateY(0); }
-      100% { transform: translateY(-100%); }
+      0%   { transform: translateY(calc(-50% - 100vh)); }
+      15%  { transform: translateY(-50%); }
+      80%  { transform: translateY(-50%); }
+      100% { transform: translateY(calc(-50% - 100vh)); }
     }
     #goal-banner-text {
       font-size: 160px;
       font-weight: bold;
       color: #fff;
-      text-shadow: 0 0 40px #22c55e, 0 0 80px #22c55e, 0 4px 12px rgba(0,0,0,0.9);
+      text-shadow: 0 0 40px #FFD700, 0 0 80px #FFD700, 0 4px 12px rgba(0,0,0,0.9);
       letter-spacing: 0.15em;
       line-height: 1;
     }
