@@ -10,17 +10,12 @@
       background: transparent;
       overflow: hidden;
       font-family: sans-serif;
-    }
-
-    #app {
-      position: fixed;
-      inset: 0;
       pointer-events: none;
       user-select: none;
     }
 
     #ticker {
-      position: absolute;
+      position: fixed;
       left: 0;
       right: 0;
       top: 1030px;
@@ -46,9 +41,7 @@
   </style>
 </head>
 <body>
-  <div id="app">
-    <div id="ticker"></div>
-  </div>
+  <div id="ticker"></div>
 
   <script>
     const WS_URL    = `ws://${location.hostname || "localhost"}:8765`;
@@ -95,13 +88,13 @@
 
     // ─── テロップ表示 ─────────────────────────────────────
     function showTicker(text) {
-      tickerEl.innerHTML = "";
+      tickerEl.replaceChildren();
       const span           = document.createElement("span");
       span.className       = "ticker-text";
       span.textContent     = text;
-      const approxWidth    = text.length * 20;
+      const approxWidth    = text.length * 30;
       const duration       = (1920 + approxWidth) / SPEED;
-      span.style.animation = `ticker-scroll ${duration}s linear forwards`;
+      span.style.animation = `ticker-scroll ${duration}s linear 2 forwards`;
       tickerEl.appendChild(span);
       return span;
     }
