@@ -291,6 +291,7 @@
       const ws = new WebSocket(WS_URL);
 
       ws.onopen = () => {
+        setStatus(true, false);
         clearTimeout(reconnectTimer);
       };
 
@@ -322,7 +323,7 @@
           } else {
             enqueue(`${data.author}: ${data.message}`, color);
           }
-        } catch (_) {}
+        } catch (e) { console.warn(e); }
       };
 
       ws.onclose = () => {

@@ -228,7 +228,7 @@
           }
           renderTime();
           renderStatus();
-        } catch (_) {}
+        } catch (e) { console.warn(e); }
       };
 
       ws.onclose = () => {
