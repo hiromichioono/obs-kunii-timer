@@ -105,7 +105,8 @@ def _start_http():
         def log_message(self, *args): pass
 
         def do_GET(self):
-            if os.path.basename(self.path.split("?")[0]).startswith("."):
+            path = self.path.split("?")[0]
+            if os.path.basename(path).startswith(".") or path.lstrip("/").startswith("logs/"):
                 self.send_error(403)
                 return
             super().do_GET()
@@ -124,7 +125,7 @@ def load_env():
             line = line.strip()
             if line and not line.startswith("#") and "=" in line:
                 key, _, val = line.partition("=")
-                os.environ.setdefault(key.strip(), val.strip())
+                os.environ.setdefault(key.strip(), val.strip().strip('"').strip("'"))
 
 
 def fetch_streams() -> list[dict]:
@@ -243,8 +244,8 @@ async def handler(websocket):
                     else:
                         handle_command(action, data.get("seconds", 0))
                         await broadcast_timer_state()
-            except (json.JSONDecodeError, KeyError):
-                pass
+            except (json.JSONDecodeError, KeyError) as e:
+                print(f"メッセージ処理エラー: {e}")
     finally:
         connected_clients.discard(websocket)
         print(f"クライアント切断 (合計: {len(connected_clients)})")
@@ -293,7 +294,7 @@ def fetch_chat(chat, loop: asyncio.AbstractEventLoop, log_file):
 
 async def main(video_id: str | None):
     loop = asyncio.get_running_loop()
-    loop.add_signal_handler(signal.SIGINT, lambda: (print("\n✅ 記録を終了しました。") or os._exit(0)))
+    loop.add_signal_handler(signal.SIGINT, lambda: (print("\n✅ 記録を終了しました。") or loop.stop()))
 
     hostname = socket.gethostname()
     threading.Thread(target=_start_http, daemon=True).start()
@@ -339,4 +340,4 @@ if __name__ == "__main__":
         asyncio.run(main(video_id))
     except KeyboardInterrupt:
         print("\n✅ 記録を終了しました。")
-        os._exit(0)
+        sys.exit(0)
