@@ -408,7 +408,7 @@
               list.appendChild(btn);
             });
           }
-        } catch (_) {}
+        } catch (e) { console.warn(e); }
       };
 
       ws.onclose = () => {

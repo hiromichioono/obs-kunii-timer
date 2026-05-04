@@ -144,7 +144,7 @@
         try {
           const data = JSON.parse(e.data);
           if (data.type === "commentary") applyCommentary(data);
-        } catch (_) {}
+        } catch (e) { console.warn(e); }
       };
 
       ws.onclose = () => {
