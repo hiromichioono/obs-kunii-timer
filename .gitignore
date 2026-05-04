@@ -48,4 +48,5 @@ logs/
 
 # Environment variables (API keys etc.)
 .env
+project-tool-key_secret.json
 
