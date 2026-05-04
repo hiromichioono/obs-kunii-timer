@@ -61,6 +61,9 @@
     let breakGen         = 0;  // stopBreakLoop のたびにインクリメント（古いコールバックを無効化）
     let breakTimer       = null;
     let reconnectTimer   = null;
+    let animGen          = 0;  // showTicker のたびにインクリメント（古いコールバックを無効化）
+    let isAnimating      = false;
+    let pendingMsg       = null;
 
     // ─── CSV 読み込み ─────────────────────────────────────
     async function loadCSV() {
@@ -95,6 +98,17 @@
       const approxWidth    = text.length * 30;
       const duration       = (1920 + approxWidth) / SPEED;
       span.style.animation = `ticker-scroll ${duration}s linear 2 forwards`;
+      const myGen = ++animGen;
+      isAnimating = true;
+      span.addEventListener("animationend", () => {
+        if (myGen !== animGen) return;  // 上書きされた古いアニメーションは無視
+        isAnimating = false;
+        if (pendingMsg) {
+          const msg = pendingMsg;
+          pendingMsg = null;
+          showTicker(msg);
+        }
+      }, { once: true });
       tickerEl.appendChild(span);
       return span;
     }
@@ -145,13 +159,17 @@
             if (min !== prevMinute) {
               prevMinute = min;
               const msg = msgs[currentHalf]?.[min];
-              if (msg) showTicker(msg);
+              if (msg) {
+                if (isAnimating) pendingMsg = msg;
+                else showTicker(msg);
+              }
             }
           } else {
             // 非アクティブ: break ループ開始
             if (wasActive) {
               prevMinute = -1;  // 再開時に 0 分メッセージを再発火できるよう
               breakIndex = 0;
+              pendingMsg = null;  // アクティブ時の未発火メッセージを破棄
             }
             startBreakLoop();
           }
