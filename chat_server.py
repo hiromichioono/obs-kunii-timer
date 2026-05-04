@@ -317,12 +317,12 @@ def fetch_chat(chat, loop: asyncio.AbstractEventLoop, log_file):
                     broadcast(json.dumps({"type": "stats", "message": milestone_msg}, ensure_ascii=False)), loop
                 )
 
-            # コメント総数マイルストーン（配信全体）
+            # コメント総数マイルストーン（配信全体）→ ticker へ
             state.total_comments += 1
             if is_total_milestone(state.total_comments):
                 total_msg = f"🎉 配信コメント{state.total_comments}件突破！みんなありがとう！"
                 asyncio.run_coroutine_threadsafe(
-                    broadcast(json.dumps({"type": "stats", "message": total_msg}, ensure_ascii=False)), loop
+                    broadcast(json.dumps({"type": "ticker_alert", "message": total_msg}, ensure_ascii=False)), loop
                 )
 
             color_index = int(hashlib.md5((channel_id + SESSION_SALT).encode()).hexdigest(), 16) % CHAT_COLOR_COUNT

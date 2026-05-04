@@ -146,6 +146,13 @@
       ws.onmessage = (e) => {
         try {
           const data = JSON.parse(e.data);
+
+          if (data.type === "ticker_alert") {
+            if (isAnimating) pendingMsg = data.message;
+            else showTicker(data.message);
+            return;
+          }
+
           if (data.type !== "timer") return;
 
           const wasActive = isActive;
