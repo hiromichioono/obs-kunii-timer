@@ -296,18 +296,18 @@
 
   <div id="sync-area">
     <label>同期:</label>
-    <input id="sync-min" type="number" min="0" max="120" value="0" inputmode="numeric" />
+    <input id="sync-min" type="text" inputmode="numeric" value="0" />
     <label>分</label>
-    <input id="sync-sec" type="number" min="0" max="59" value="0" inputmode="numeric" />
+    <input id="sync-sec" type="text" inputmode="numeric" value="0" />
     <label>秒</label>
     <button id="btn-sync">時刻を同期</button>
   </div>
 
   <div id="score-area">
     <div id="teams-row">
-      <input id="input-home" type="text" placeholder="ホーム" />
+      <input id="input-home" type="text" placeholder="ホーム" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" />
       <span>vs</span>
-      <input id="input-away" type="text" placeholder="アウェイ" />
+      <input id="input-away" type="text" placeholder="アウェイ" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" />
     </div>
     <button id="btn-set-teams">セット</button>
     <div id="goals-row">
