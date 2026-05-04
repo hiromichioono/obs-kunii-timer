@@ -300,12 +300,10 @@ def fetch_chat(chat, loop: asyncio.AbstractEventLoop, log_file):
 
 async def main(video_id: str | None):
     loop = asyncio.get_running_loop()
-    stop_event = asyncio.Event()
 
     def _on_sigint():
-        if not stop_event.is_set():
-            print("\n✅ 記録を終了しました。", flush=True)
-            stop_event.set()
+        print("\n✅ 記録を終了しました。", flush=True)
+        os._exit(0)
 
     loop.add_signal_handler(signal.SIGINT, _on_sigint)
 
@@ -322,7 +320,7 @@ async def main(video_id: str | None):
         else:
             print("タイマーのみモードで起動（チャットなし）")
 
-        await stop_event.wait()  # Ctrl+C まで待機
+        await asyncio.Future()  # Ctrl+C まで待機（_on_sigint で終了）
 
 
 if __name__ == "__main__":
