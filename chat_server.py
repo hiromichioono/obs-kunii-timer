@@ -51,9 +51,21 @@ class AppState:
     last_message_time: dict = field(default_factory=dict)
     seen_channels: set = field(default_factory=set)    # 初コメ検出
     comment_counts: dict = field(default_factory=dict)  # コメント数集計
+    total_comments: int = 0                             # 配信全体コメント総数
 
 
 state = AppState()
+
+
+def is_total_milestone(count: int) -> bool:
+    """配信全体コメント総数のマイルストーン判定"""
+    if count < 50:
+        return count % 10 == 0   # 10, 20, 30, 40
+    if count < 200:
+        return count % 50 == 0   # 50, 100, 150, 200
+    if count < 1000:
+        return count % 100 == 0  # 300, 400 ... 900, 1000
+    return count % 500 == 0      # 1500, 2000 ...
 
 
 def is_comment_milestone(count: int) -> bool:
@@ -296,13 +308,21 @@ def fetch_chat(chat, loop: asyncio.AbstractEventLoop, log_file):
                     broadcast(json.dumps({"type": "stats", "message": first_msg}, ensure_ascii=False)), loop
                 )
 
-            # コメント数マイルストーン
+            # コメント数マイルストーン（個人）
             state.comment_counts[channel_id] = state.comment_counts.get(channel_id, 0) + 1
             count = state.comment_counts[channel_id]
             if is_comment_milestone(count):
                 milestone_msg = f"🏆 {c.author.name}さん、{count}コメ達成！熱い応援ありがとう！"
                 asyncio.run_coroutine_threadsafe(
                     broadcast(json.dumps({"type": "stats", "message": milestone_msg}, ensure_ascii=False)), loop
+                )
+
+            # コメント総数マイルストーン（配信全体）
+            state.total_comments += 1
+            if is_total_milestone(state.total_comments):
+                total_msg = f"🎉 配信コメント{state.total_comments}件突破！みんなありがとう！"
+                asyncio.run_coroutine_threadsafe(
+                    broadcast(json.dumps({"type": "stats", "message": total_msg}, ensure_ascii=False)), loop
                 )
 
             color_index = int(hashlib.md5((channel_id + SESSION_SALT).encode()).hexdigest(), 16) % CHAT_COLOR_COUNT
