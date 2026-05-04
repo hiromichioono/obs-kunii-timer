@@ -282,7 +282,7 @@ async def handler(websocket):
                     else:
                         handle_command(action, data.get("seconds", 0))
                         await broadcast_timer_state()
-            except (json.JSONDecodeError, KeyError) as e:
+            except (json.JSONDecodeError, KeyError, ValueError) as e:
                 print(f"メッセージ処理エラー: {e}")
     finally:
         state.connected_clients.discard(websocket)
