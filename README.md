@@ -18,6 +18,7 @@ obs-kunii-timer/
 ├── commentary_input.html     # 解説入力パネル（iPhone のブラウザで開く）
 ├── commentary_overlay.html   # OBS ブラウザソース用解説コンテンツオーバーレイ
 ├── .env                      # APIキー・チャンネルID設定（.gitignore 対象）
+├── project-tool-key_secret.json  # Google API OAuth2 認証ファイル（.gitignore 対象・未実装）
 └── logs/                     # チャットログ保存先（.gitignore 対象）
 ```
 
