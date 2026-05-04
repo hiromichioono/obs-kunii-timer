@@ -272,6 +272,8 @@ async def handler(websocket):
                     elif action == "get_streams":
                         items = fetch_streams()
                         await websocket.send(json.dumps({"type": "streams", "items": items}))
+                    elif action == "anim_goal":
+                        await broadcast(json.dumps({"type": "anim_goal"}))
                     elif action == "test_comment":
                         msg = {"author": "テスト太郎", "message": data.get("message", "テストコメントです！"), "datetime": str(datetime.datetime.now()), "color_index": random.randint(0, 6)}
                         await broadcast(json.dumps(msg, ensure_ascii=False))
