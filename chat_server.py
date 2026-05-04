@@ -49,10 +49,22 @@ class AppState:
     chat_enabled: bool = False
     connected_clients: set = field(default_factory=set)
     last_message_time: dict = field(default_factory=dict)
-    seen_channels: set = field(default_factory=set)  # 初コメ検出
+    seen_channels: set = field(default_factory=set)    # 初コメ検出
+    comment_counts: dict = field(default_factory=dict)  # コメント数集計
 
 
 state = AppState()
+
+
+def is_comment_milestone(count: int) -> bool:
+    """序盤ボーナス・サッカー特別数（11）・キリ番でマイルストーン判定"""
+    if count in {3, 11}:   # 序盤ボーナス + サッカー特別数
+        return True
+    if count < 20:
+        return count % 5 == 0   # 5, 10, 15, 20
+    if count < 100:
+        return count % 10 == 0  # 20, 30, 40 ... 90
+    return count % 50 == 0      # 100, 150, 200 ...
 
 
 def get_timer_seconds() -> float:
@@ -282,6 +294,15 @@ def fetch_chat(chat, loop: asyncio.AbstractEventLoop, log_file):
                 first_msg = f"👋 {c.author.name}さん、コメントありがとう！"
                 asyncio.run_coroutine_threadsafe(
                     broadcast(json.dumps({"type": "stats", "message": first_msg}, ensure_ascii=False)), loop
+                )
+
+            # コメント数マイルストーン
+            state.comment_counts[channel_id] = state.comment_counts.get(channel_id, 0) + 1
+            count = state.comment_counts[channel_id]
+            if is_comment_milestone(count):
+                milestone_msg = f"🏆 {c.author.name}さん、{count}コメ達成！熱い応援ありがとう！"
+                asyncio.run_coroutine_threadsafe(
+                    broadcast(json.dumps({"type": "stats", "message": milestone_msg}, ensure_ascii=False)), loop
                 )
 
             color_index = int(hashlib.md5((channel_id + SESSION_SALT).encode()).hexdigest(), 16) % CHAT_COLOR_COUNT
