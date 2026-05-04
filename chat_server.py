@@ -279,7 +279,7 @@ def fetch_chat(chat, loop: asyncio.AbstractEventLoop, log_file):
             # 初コメ検出
             if channel_id not in state.seen_channels:
                 state.seen_channels.add(channel_id)
-                first_msg = f"👋 {c.author.name}さん、はじめてのコメントありがとう！"
+                first_msg = f"👋 {c.author.name}さん、コメントありがとう！"
                 asyncio.run_coroutine_threadsafe(
                     broadcast(json.dumps({"type": "stats", "message": first_msg}, ensure_ascii=False)), loop
                 )
