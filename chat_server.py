@@ -1,5 +1,4 @@
 import asyncio
-import signal
 import socket
 import websockets
 import pytchat
@@ -299,9 +298,6 @@ def fetch_chat(chat, loop: asyncio.AbstractEventLoop, log_file):
 
 
 async def main(video_id: str | None):
-    loop = asyncio.get_running_loop()
-    loop.add_signal_handler(signal.SIGINT, lambda: (print("\n✅ 記録を終了しました。") or loop.stop()))
-
     hostname = socket.gethostname()
     threading.Thread(target=_start_http, daemon=True).start()
 
