@@ -128,10 +128,56 @@
     .disconnected { background: var(--color-off); box-shadow: 0 0 6px var(--color-off); }
     .label-on  { color: #22c55e; }
     .label-off { color: var(--color-off); }
+
+    /* ゴールアニメーション */
+    #goal-flash {
+      position: absolute;
+      inset: 0;
+      background: #22c55e;
+      opacity: 0;
+      pointer-events: none;
+    }
+    #goal-flash.active {
+      animation: goal-flash 0.8s ease-out forwards;
+    }
+    @keyframes goal-flash {
+      0%   { opacity: 0.55; }
+      100% { opacity: 0; }
+    }
+
+    #goal-banner {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      display: flex;
+      justify-content: center;
+      transform: translateY(-100%);
+      pointer-events: none;
+    }
+    #goal-banner.active {
+      animation: goal-banner 3s ease-in-out forwards;
+    }
+    @keyframes goal-banner {
+      0%   { transform: translateY(-100%); }
+      15%  { transform: translateY(0); }
+      80%  { transform: translateY(0); }
+      100% { transform: translateY(-100%); }
+    }
+    #goal-banner-text {
+      font-size: 160px;
+      font-weight: bold;
+      color: #fff;
+      text-shadow: 0 0 40px #22c55e, 0 0 80px #22c55e, 0 4px 12px rgba(0,0,0,0.9);
+      letter-spacing: 0.15em;
+      line-height: 1;
+    }
   </style>
 </head>
 <body>
   <div id="app">
+    <div id="goal-flash"></div>
+    <div id="goal-banner"><span id="goal-banner-text">GOAL!!</span></div>
     <div id="top-row">
       <div id="status">
         <div id="status-dot" class="disconnected"></div>
@@ -154,6 +200,19 @@
 
   <script>
     const WS_URL = `ws://${location.hostname || "localhost"}:8765`;
+
+    const goalFlashEl  = document.getElementById("goal-flash");
+    const goalBannerEl = document.getElementById("goal-banner");
+
+    function showGoalAnim() {
+      goalFlashEl.classList.remove("active");
+      void goalFlashEl.offsetWidth;
+      goalFlashEl.classList.add("active");
+
+      goalBannerEl.classList.remove("active");
+      void goalBannerEl.offsetWidth;
+      goalBannerEl.classList.add("active");
+    }
 
     const timeEl         = document.getElementById("time");
     const halfLabelEl    = document.getElementById("half-label");
@@ -215,6 +274,7 @@
       ws.onmessage = (e) => {
         try {
           const data = JSON.parse(e.data);
+          if (data.type === "anim_goal") { showGoalAnim(); return; }
           if (data.type !== "timer") return;
           totalSeconds = data.seconds;
           timerActive  = data.active;

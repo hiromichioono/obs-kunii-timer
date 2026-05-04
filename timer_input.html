@@ -214,6 +214,25 @@
       font-size: 15px;
     }
 
+    /* アニメーション */
+    #anim-area {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      width: 100%;
+    }
+
+    #btn-anim-goal {
+      width: 100%;
+      padding: 18px;
+      font-size: 22px;
+      font-weight: bold;
+      border-color: #22c55e;
+      color: #22c55e;
+      letter-spacing: 0.1em;
+    }
+    #btn-anim-goal:active { background: color-mix(in srgb, #22c55e 15%, transparent); }
+
     /* YouTube チャット開始 */
     #chat-area {
       display: flex;
@@ -323,6 +342,10 @@
         <button class="btn-goal-minus" data-team="away">−</button>
       </div>
     </div>
+  </div>
+
+  <div id="anim-area">
+    <button id="btn-anim-goal">⚽ GOAL!!</button>
   </div>
 
   <div id="chat-area">
@@ -443,6 +466,8 @@
     document.querySelectorAll(".btn-goal-minus").forEach(btn => {
       btn.onclick = () => send({ type: "cmd", action: "undo_goal", team: btn.dataset.team });
     });
+
+    document.getElementById("btn-anim-goal").onclick = () => send({ type: "cmd", action: "anim_goal" });
 
     document.getElementById("btn-get-streams").onclick = () => send({ type: "cmd", action: "get_streams" });
 
