@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>Ticker Overlay</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: transparent;
+      overflow: hidden;
+      font-family: sans-serif;
+    }
+
+    #app {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      user-select: none;
+    }
+
+    #ticker {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 1030px;
+      height: 30px;
+      overflow: hidden;
+      background: rgba(0, 35, 102, 0.85);
+    }
+
+    .ticker-text {
+      position: absolute;
+      top: 50%;
+      white-space: nowrap;
+      font-size: 18px;
+      font-weight: bold;
+      color: #fff;
+      letter-spacing: 0.05em;
+    }
+
+    @keyframes ticker-scroll {
+      from { transform: translateY(-50%) translateX(-100%); }
+      to   { transform: translateY(-50%) translateX(1920px); }
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div id="ticker"></div>
+  </div>
+
+  <script>
+    const WS_URL    = `ws://${location.hostname || "localhost"}:8765`;
+    const SPEED     = 250;   // px/秒
+    const BREAK_GAP = 1000;  // テロップ終了後の待機時間（ms）
+
+    const tickerEl = document.getElementById("ticker");
+
+    // { 前半: { min: message }, 後半: { min: message }, break: [message, ...] }
+    const msgs = { 前半: {}, 後半: {}, break: [] };
+
+    let prevMinute       = -1;
+    let currentHalf      = "前半";
+    let isActive         = false;
+    let breakLoopRunning = false;
+    let breakIndex       = 0;
+    let breakGen         = 0;  // stopBreakLoop のたびにインクリメント（古いコールバックを無効化）
+    let breakTimer       = null;
+    let reconnectTimer   = null;
+
+    // ─── CSV 読み込み ─────────────────────────────────────
+    async function loadCSV() {
+      try {
+        const res  = await fetch("ticker_messages.csv");
+        const text = await res.text();
+        for (const raw of text.trim().split("\n").slice(1)) {
+          const line    = raw.replace(/\r/, "");
+          const parts   = line.split(",");
+          const half    = parts[0].trim();
+          const trigMin = parseInt(parts[1], 10);
+          const message = parts.slice(2).join(",").trim();
+          if (!message) continue;
+          if (half === "break") {
+            msgs.break.push(message);
+          } else {
+            if (!msgs[half]) msgs[half] = {};
+            msgs[half][trigMin] = message;
+          }
+        }
+      } catch (e) {
+        console.warn("CSV読み込みエラー:", e);
+      }
+    }
+
+    // ─── テロップ表示 ─────────────────────────────────────
+    function showTicker(text) {
+      tickerEl.innerHTML = "";
+      const span           = document.createElement("span");
+      span.className       = "ticker-text";
+      span.textContent     = text;
+      const approxWidth    = text.length * 20;
+      const duration       = (1920 + approxWidth) / SPEED;
+      span.style.animation = `ticker-scroll ${duration}s linear forwards`;
+      tickerEl.appendChild(span);
+      return span;
+    }
+
+    // ─── break ループ ─────────────────────────────────────
+    function startBreakLoop() {
+      if (breakLoopRunning || msgs.break.length === 0) return;
+      breakLoopRunning = true;
+      runBreak(breakGen);
+    }
+
+    function runBreak(gen) {
+      if (!breakLoopRunning || gen !== breakGen) return;
+      const span = showTicker(msgs.break[breakIndex]);
+      breakIndex = (breakIndex + 1) % msgs.break.length;
+      span.addEventListener("animationend", () => {
+        if (breakLoopRunning && gen === breakGen) {
+          breakTimer = setTimeout(() => runBreak(gen), BREAK_GAP);
+        }
+      });
+    }
+
+    function stopBreakLoop() {
+      breakLoopRunning = false;
+      breakGen++;
+      clearTimeout(breakTimer);
+    }
+
+    // ─── WebSocket ────────────────────────────────────────
+    function connect() {
+      const ws = new WebSocket(WS_URL);
+
+      ws.onopen = () => clearTimeout(reconnectTimer);
+
+      ws.onmessage = (e) => {
+        try {
+          const data = JSON.parse(e.data);
+          if (data.type !== "timer") return;
+
+          const wasActive = isActive;
+          isActive    = data.active;
+          currentHalf = data.half || currentHalf;
+
+          if (isActive) {
+            // アクティブ: break ループ停止 → 分変化でメッセージ発火
+            if (!wasActive) stopBreakLoop();
+            const min = Math.floor(data.seconds / 60);
+            if (min !== prevMinute) {
+              prevMinute = min;
+              const msg = msgs[currentHalf]?.[min];
+              if (msg) showTicker(msg);
+            }
+          } else {
+            // 非アクティブ: break ループ開始
+            if (wasActive) {
+              prevMinute = -1;  // 再開時に 0 分メッセージを再発火できるよう
+              breakIndex = 0;
+            }
+            startBreakLoop();
+          }
+        } catch (e) {
+          console.warn(e);
+        }
+      };
+
+      ws.onclose = () => {
+        reconnectTimer = setTimeout(connect, 3000);
+      };
+
+      ws.onerror = () => ws.close();
+    }
+
+    loadCSV().then(connect);
+  </script>
+</body>
+</html>
