@@ -16,6 +16,13 @@ import functools
 import random
 import hashlib
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass, field
+
+# --- 定数 ---
+WS_PORT           = 8765  # WebSocket サーバーポート
+HTTP_PORT         = 8080  # HTTP サーバーポート
+CHAT_COOLDOWN     = 30    # 同一ユーザーの連投制限（秒）
+CHAT_COLOR_COUNT  = 7     # チャット色の種類数
 
 # --- ログ設定 ---
 now = datetime.datetime.now()
@@ -24,54 +31,55 @@ LOG_DIR = os.path.join(BASE_DIR, "logs", now.strftime('%Y'), now.strftime('%Y_%m
 os.makedirs(LOG_DIR, exist_ok=True)
 filename = os.path.join(LOG_DIR, f"chat_log_{now.strftime('%Y%m%d_%H%M')}.txt")
 
-# --- WebSocket クライアント管理 ---
-connected_clients = set()
-chat_enabled = False  # YouTube URL ありで起動した場合 True
-
-# --- タイマー状態 ---
-timer_active = False
-timer_start  = None   # float: time.time()
-timer_offset = 0.0    # 一時停止前までの累積秒数
-current_half = "前半"  # "前半" | "後半"
-
-# --- 解説コンテンツ ---
-commentary = {"score": "", "flow": "", "player": "", "term": ""}
-
-# --- スコア ---
-score = {"home": "", "away": "", "home_goals": 0, "away_goals": 0}
-
-# --- チャット色・連投対策 ---
 SESSION_SALT = str(random.randint(0, 999999))
-last_message_time: dict = {}  # channel_id -> float timestamp
+
+
+@dataclass
+class AppState:
+    # タイマー
+    timer_active: bool = False
+    timer_start: float | None = None
+    timer_offset: float = 0.0
+    current_half: str = "前半"  # "前半" | "後半"
+    # スコア
+    score: dict = field(default_factory=lambda: {"home": "", "away": "", "home_goals": 0, "away_goals": 0})
+    # 解説コンテンツ
+    commentary: dict = field(default_factory=lambda: {"score": "", "flow": "", "player": "", "term": ""})
+    # チャット・接続管理
+    chat_enabled: bool = False
+    connected_clients: set = field(default_factory=set)
+    last_message_time: dict = field(default_factory=dict)
+
+
+state = AppState()
 
 
 def get_timer_seconds() -> float:
-    if timer_active and timer_start is not None:
-        return timer_offset + (time.time() - timer_start)
-    return timer_offset
+    if state.timer_active and state.timer_start is not None:
+        return state.timer_offset + (time.time() - state.timer_start)
+    return state.timer_offset
 
 
 def handle_command(action: str, seconds: float = 0) -> None:
-    global timer_active, timer_start, timer_offset
-    if action == "start" and not timer_active:
-        timer_start = time.time()
-        timer_active = True
-    elif action == "stop" and timer_active:
-        timer_offset += time.time() - timer_start
-        timer_active = False
-        timer_start = None
+    if action == "start" and not state.timer_active:
+        state.timer_start = time.time()
+        state.timer_active = True
+    elif action == "stop" and state.timer_active:
+        state.timer_offset += time.time() - state.timer_start
+        state.timer_active = False
+        state.timer_start = None
     elif action == "reset":
-        timer_active = False
-        timer_start = None
-        timer_offset = 0.0
+        state.timer_active = False
+        state.timer_start = None
+        state.timer_offset = 0.0
     elif action == "sync":
-        timer_offset = float(seconds)
-        if timer_active:
-            timer_start = time.time()
+        state.timer_offset = float(seconds)
+        if state.timer_active:
+            state.timer_start = time.time()
 
 
 async def broadcast(message: str):
-    clients = list(connected_clients)  # イテレート中の変更を避けるためスナップショット
+    clients = list(state.connected_clients)  # イテレート中の変更を避けるためスナップショット
     if clients:
         await asyncio.gather(
             *[ws.send(message) for ws in clients],
@@ -83,10 +91,10 @@ def _timer_state_msg() -> str:
     return json.dumps({
         "type":    "timer",
         "seconds": int(get_timer_seconds()),
-        "active":  timer_active,
-        "chat":    chat_enabled,
-        "half":    current_half,
-        **score,
+        "active":  state.timer_active,
+        "chat":    state.chat_enabled,
+        "half":    state.current_half,
+        **state.score,
     })
 
 
@@ -105,13 +113,14 @@ def _start_http():
         def log_message(self, *args): pass
 
         def do_GET(self):
-            if os.path.basename(self.path.split("?")[0]).startswith("."):
+            path = self.path.split("?")[0]
+            if os.path.basename(path).startswith(".") or path.lstrip("/").startswith("logs/"):
                 self.send_error(403)
                 return
             super().do_GET()
 
     handler = functools.partial(_SilentHandler, directory=BASE_DIR)
-    with http.server.HTTPServer(("0.0.0.0", 8080), handler) as httpd:
+    with http.server.HTTPServer(("0.0.0.0", HTTP_PORT), handler) as httpd:
         httpd.serve_forever()
 
 
@@ -124,7 +133,7 @@ def load_env():
             line = line.strip()
             if line and not line.startswith("#") and "=" in line:
                 key, _, val = line.partition("=")
-                os.environ.setdefault(key.strip(), val.strip())
+                os.environ.setdefault(key.strip(), val.strip().strip('"').strip("'"))
 
 
 def fetch_streams() -> list[dict]:
@@ -163,10 +172,9 @@ def extract_video_id(url: str) -> str:
 
 
 async def start_chat(video_id: str):
-    global chat_enabled
-    if chat_enabled:
+    if state.chat_enabled:
         return
-    chat_enabled = True
+    state.chat_enabled = True
     await broadcast_timer_state()
     loop = asyncio.get_running_loop()
     try:
@@ -184,7 +192,7 @@ async def start_chat(video_id: str):
     except Exception as e:
         print(f"チャットエラー: {e}")
     finally:
-        chat_enabled = False
+        state.chat_enabled = False
         await broadcast_timer_state()
         if os.path.exists(filename) and os.path.getsize(filename) == 0:
             os.remove(filename)
@@ -192,12 +200,11 @@ async def start_chat(video_id: str):
 
 
 async def handler(websocket):
-    global current_half, commentary, score
-    connected_clients.add(websocket)
-    print(f"クライアント接続 (合計: {len(connected_clients)})")
+    state.connected_clients.add(websocket)
+    print(f"クライアント接続 (合計: {len(state.connected_clients)})")
     # 接続直後に現在の状態を送信（新規クライアントのみ）
     await websocket.send(_timer_state_msg())
-    await websocket.send(json.dumps({"type": "commentary", **commentary}))
+    await websocket.send(json.dumps({"type": "commentary", **state.commentary}))
     try:
         async for message in websocket:
             try:
@@ -205,49 +212,49 @@ async def handler(websocket):
                 if data.get("type") == "cmd":
                     action = data["action"]
                     if action == "set_half":
-                        current_half = data.get("half", "前半")
+                        state.current_half = data.get("half", "前半")
                         await broadcast_timer_state()
                     elif action == "set_teams":
-                        score["home"] = data.get("home", "")
-                        score["away"] = data.get("away", "")
+                        state.score["home"] = data.get("home", "")
+                        state.score["away"] = data.get("away", "")
                         await broadcast_timer_state()
                     elif action == "goal":
                         team = data.get("team", "")
                         if team == "home":
-                            score["home_goals"] += 1
+                            state.score["home_goals"] += 1
                         elif team == "away":
-                            score["away_goals"] += 1
+                            state.score["away_goals"] += 1
                         await broadcast_timer_state()
                     elif action == "undo_goal":
                         team = data.get("team", "")
-                        if team == "home" and score["home_goals"] > 0:
-                            score["home_goals"] -= 1
-                        elif team == "away" and score["away_goals"] > 0:
-                            score["away_goals"] -= 1
+                        if team == "home" and state.score["home_goals"] > 0:
+                            state.score["home_goals"] -= 1
+                        elif team == "away" and state.score["away_goals"] > 0:
+                            state.score["away_goals"] -= 1
                         await broadcast_timer_state()
                     elif action == "start_chat":
                         video_id = data.get("video_id", "").strip()
                         if not video_id:
                             url = data.get("url", "").strip()
                             video_id = extract_video_id(url) if url else ""
-                        if video_id and not chat_enabled:
+                        if video_id and not state.chat_enabled:
                             asyncio.create_task(start_chat(video_id))
                     elif action == "set_commentary":
-                        field = data.get("field", "")
-                        if field in commentary:
-                            commentary[field] = data.get("value", "")
-                            await broadcast(json.dumps({"type": "commentary", **commentary}))
+                        fname = data.get("field", "")
+                        if fname in state.commentary:
+                            state.commentary[fname] = data.get("value", "")
+                            await broadcast(json.dumps({"type": "commentary", **state.commentary}))
                     elif action == "get_streams":
                         items = fetch_streams()
                         await websocket.send(json.dumps({"type": "streams", "items": items}))
                     else:
                         handle_command(action, data.get("seconds", 0))
                         await broadcast_timer_state()
-            except (json.JSONDecodeError, KeyError):
-                pass
+            except (json.JSONDecodeError, KeyError) as e:
+                print(f"メッセージ処理エラー: {e}")
     finally:
-        connected_clients.discard(websocket)
-        print(f"クライアント切断 (合計: {len(connected_clients)})")
+        state.connected_clients.discard(websocket)
+        print(f"クライアント切断 (合計: {len(state.connected_clients)})")
 
 
 # --- pytchat チャット取得（別スレッドで実行）---
@@ -264,11 +271,11 @@ def fetch_chat(chat, loop: asyncio.AbstractEventLoop, log_file):
             # 連投対策（スパチャ・配信者は免除）
             if not is_superchat and not is_owner:
                 now_ts = time.time()
-                if channel_id in last_message_time and now_ts - last_message_time[channel_id] < 30:
+                if channel_id in state.last_message_time and now_ts - state.last_message_time[channel_id] < CHAT_COOLDOWN:
                     continue
-                last_message_time[channel_id] = now_ts
+                state.last_message_time[channel_id] = now_ts
 
-            color_index = int(hashlib.md5((channel_id + SESSION_SALT).encode()).hexdigest(), 16) % 7
+            color_index = int(hashlib.md5((channel_id + SESSION_SALT).encode()).hexdigest(), 16) % CHAT_COLOR_COUNT
 
             if amount:
                 log_line = f"[{c.datetime}] 💰{c.author.name} ({currency}{amount}): {c.message}\n"
@@ -293,14 +300,19 @@ def fetch_chat(chat, loop: asyncio.AbstractEventLoop, log_file):
 
 async def main(video_id: str | None):
     loop = asyncio.get_running_loop()
-    loop.add_signal_handler(signal.SIGINT, lambda: (print("\n✅ 記録を終了しました。") or os._exit(0)))
+
+    def _on_sigint():
+        print("\n✅ 記録を終了しました。", flush=True)
+        os._exit(0)
+
+    loop.add_signal_handler(signal.SIGINT, _on_sigint)
 
     hostname = socket.gethostname()
     threading.Thread(target=_start_http, daemon=True).start()
 
-    async with websockets.serve(handler, "0.0.0.0", 8765):
-        print(f"WebSocketサーバー起動: ws://localhost:8765")
-        print(f"タイマー操作（iPhone）: http://{hostname}:8080/timer_input.html")
+    async with websockets.serve(handler, "0.0.0.0", WS_PORT):
+        print(f"WebSocketサーバー起動: ws://localhost:{WS_PORT}")
+        print(f"タイマー操作（iPhone）: http://{hostname}:{HTTP_PORT}/timer_input.html")
         asyncio.create_task(timer_tick())
 
         if video_id is not None:
@@ -308,7 +320,7 @@ async def main(video_id: str | None):
         else:
             print("タイマーのみモードで起動（チャットなし）")
 
-        await asyncio.Future()  # 無限待機（チャット終了後もサーバーを維持）
+        await asyncio.Future()  # Ctrl+C まで待機（_on_sigint で終了）
 
 
 if __name__ == "__main__":
@@ -338,5 +350,4 @@ if __name__ == "__main__":
 
         asyncio.run(main(video_id))
     except KeyboardInterrupt:
-        print("\n✅ 記録を終了しました。")
-        os._exit(0)
+        print("\n✅ 記録を終了しました。")  # signal handler 未対応環境のフォールバック
