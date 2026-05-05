@@ -270,7 +270,8 @@ async def handler(websocket):
                             state.commentary[fname] = data.get("value", "")
                             await broadcast(json.dumps({"type": "commentary", **state.commentary}))
                     elif action == "get_streams":
-                        items = fetch_streams()
+                        loop = asyncio.get_running_loop()
+                        items = await loop.run_in_executor(None, fetch_streams)
                         await websocket.send(json.dumps({"type": "streams", "items": items}))
                     elif action == "anim_goal":
                         await broadcast(json.dumps({"type": "anim_goal"}))
