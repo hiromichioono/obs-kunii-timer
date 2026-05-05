@@ -128,7 +128,7 @@
         if (breakLoopRunning && gen === breakGen) {
           breakTimer = setTimeout(() => runBreak(gen), BREAK_GAP);
         }
-      });
+      }, { once: true });
     }
 
     function stopBreakLoop() {
