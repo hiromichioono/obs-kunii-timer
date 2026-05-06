@@ -99,6 +99,85 @@
       border-color: var(--green);
       color: var(--green);
     }
+
+    /* コメントピックアップ */
+    #pickup-section {
+      background: var(--surface);
+      padding: 12px 14px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      margin-bottom: 12px;
+    }
+
+    #pickup-section label {
+      display: block;
+      font-size: 11px;
+      color: #556;
+      letter-spacing: 0.05em;
+      margin-bottom: 8px;
+    }
+
+    #pickup-list {
+      max-height: 280px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .pickup-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 7px 10px;
+    }
+
+    .pickup-item.sc {
+      border-color: #f57c00;
+      background: #fff8f0;
+    }
+
+    .pickup-text {
+      flex: 1;
+      font-size: 13px;
+      line-height: 1.4;
+      word-break: break-all;
+      color: #111827;
+    }
+
+    .pickup-text .pickup-author {
+      font-weight: bold;
+      margin-right: 4px;
+    }
+
+    .btn-pick {
+      flex-shrink: 0;
+      padding: 5px 10px;
+      border-radius: 6px;
+      border: 1px solid var(--navy);
+      color: #8899cc;
+      background: var(--surface);
+      font-size: 13px;
+      cursor: pointer;
+      transition: background 0.1s, color 0.1s, border-color 0.1s;
+    }
+
+    .btn-pick:active { background: var(--navy); color: #fff; }
+
+    .btn-pick.sent-flash {
+      border-color: var(--green);
+      color: var(--green);
+    }
+
+    #pickup-empty {
+      font-size: 12px;
+      color: #aaa;
+      text-align: center;
+      padding: 12px 0;
+    }
   </style>
 </head>
 <body>
@@ -133,6 +212,13 @@
     <button class="btn-send" data-field="term">送信</button>
   </div>
 
+  <div id="pickup-section">
+    <label>コメントピックアップ</label>
+    <div id="pickup-list">
+      <div id="pickup-empty">コメント待機中…</div>
+    </div>
+  </div>
+
   <script>
     const WS_URL = `ws://${location.hostname || "localhost"}:8765`;
 
@@ -154,11 +240,57 @@
       }
     }
 
+    const pickupList  = document.getElementById("pickup-list");
+    const pickupEmpty = document.getElementById("pickup-empty");
+
+    function addCandidate(data) {
+      if (pickupEmpty.parentNode) pickupEmpty.remove();
+
+      const item = document.createElement("div");
+      item.className = "pickup-item" + (data.superchat ? " sc" : "");
+
+      const text = document.createElement("div");
+      text.className = "pickup-text";
+      const author  = document.createElement("span");
+      author.className = "pickup-author";
+      author.textContent = data.author + ":";
+      text.appendChild(author);
+      text.appendChild(document.createTextNode(" " + (data.message || "")));
+      if (data.superchat) {
+        const badge = document.createElement("span");
+        badge.style.cssText = "margin-left:4px;font-size:11px;color:#f57c00;font-weight:bold;";
+        badge.textContent = data.superchat.currency + data.superchat.amount;
+        text.appendChild(badge);
+      }
+
+      const btn = document.createElement("button");
+      btn.className = "btn-pick";
+      btn.textContent = "▶";
+      btn.onclick = () => {
+        send({ type: "cmd", action: "pick_chat",
+               author: data.author, message: data.message,
+               datetime: data.datetime, color_index: data.color_index,
+               ...(data.superchat ? { superchat: data.superchat } : {}) });
+        btn.classList.add("sent-flash");
+        setTimeout(() => btn.classList.remove("sent-flash"), 600);
+      };
+
+      item.appendChild(text);
+      item.appendChild(btn);
+      pickupList.insertBefore(item, pickupList.firstChild);
+    }
+
     function connect() {
       ws = new WebSocket(WS_URL);
       ws.onopen  = () => { setStatus(true); clearTimeout(reconnectTimer); };
       ws.onclose = () => { setStatus(false); reconnectTimer = setTimeout(connect, 3000); };
       ws.onerror = () => ws.close();
+      ws.onmessage = (e) => {
+        try {
+          const data = JSON.parse(e.data);
+          if (data.type === "chat_candidate") addCandidate(data);
+        } catch (_) {}
+      };
     }
 
     document.querySelectorAll(".btn-send").forEach(btn => {

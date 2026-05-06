@@ -275,12 +275,22 @@ async def handler(websocket):
                         await websocket.send(json.dumps({"type": "streams", "items": items}))
                     elif action == "anim_goal":
                         await broadcast(json.dumps({"type": "anim_goal"}))
+                    elif action == "pick_chat":
+                        payload = {
+                            "author":      data.get("author", ""),
+                            "message":     data.get("message", ""),
+                            "datetime":    data.get("datetime", ""),
+                            "color_index": data.get("color_index", 0),
+                        }
+                        if "superchat" in data:
+                            payload["superchat"] = data["superchat"]
+                        await broadcast(json.dumps(payload, ensure_ascii=False))
                     elif action == "test_comment":
-                        msg = {"author": "テスト太郎", "message": data.get("message", "テストコメントです！"), "datetime": str(datetime.datetime.now()), "color_index": random.randint(0, 6)}
+                        msg = {"type": "chat_candidate", "author": "テスト太郎", "message": data.get("message", "テストコメントです！"), "datetime": str(datetime.datetime.now()), "color_index": random.randint(0, 6)}
                         await broadcast(json.dumps(msg, ensure_ascii=False))
                     elif action == "test_superchat":
                         amount = int(data.get("amount", 500))
-                        msg = {"author": "テスト太郎", "message": data.get("message", f"テストスパチャ {amount}円！"), "datetime": str(datetime.datetime.now()), "color_index": 0, "superchat": {"amount": amount, "currency": "¥"}}
+                        msg = {"type": "chat_candidate", "author": "テスト太郎", "message": data.get("message", f"テストスパチャ {amount}円！"), "datetime": str(datetime.datetime.now()), "color_index": 0, "superchat": {"amount": amount, "currency": "¥"}}
                         await broadcast(json.dumps(msg, ensure_ascii=False))
                     else:
                         handle_command(action, data.get("seconds", 0))
@@ -346,6 +356,7 @@ def fetch_chat(chat, loop: asyncio.AbstractEventLoop, log_file):
             log_file.flush()
 
             payload = {
+                "type": "chat_candidate",
                 "author": c.author.name,
                 "message": c.message or "",
                 "datetime": c.datetime,

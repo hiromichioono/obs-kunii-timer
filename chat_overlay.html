@@ -37,13 +37,12 @@
       position: absolute;
       left: 0;
       right: 0;
-      height: 73px;
+      height: 110px;
       overflow: hidden;
     }
 
     .lane:nth-child(1) { top: 0px; }
-    .lane:nth-child(2) { top: 74px; }
-    .lane:nth-child(3) { top: 148px; }
+    .lane:nth-child(2) { top: 110px; }
 
     /* スクロールするコメントバブル */
     .bubble {
@@ -52,7 +51,7 @@
       white-space: nowrap;
       padding: 4px 14px;
       border-radius: 20px;
-      font-size: 28px;
+      font-size: 40px;
       font-weight: bold;
       line-height: 1;
     }
@@ -116,7 +115,6 @@
     <div id="lanes">
       <div class="lane"></div>
       <div class="lane"></div>
-      <div class="lane"></div>
     </div>
     <div id="superchat-overlay">
       <div id="superchat-card"></div>
@@ -135,8 +133,9 @@
       "#007799", "#4400AA", "#880088"
     ];
 
-    const THANKS_COLOR = "#002366";
-    const SPEED = 300; // px/秒
+    const THANKS_COLOR  = "#002366";
+    const MAX_QUEUE     = 30;  // キュー上限（超えたら古いものを捨てる）
+    const GAP_PX        = 200; // コメント間の最小隙間（px）
 
     const SC_TIERS = [
       { max:      199, bg: "#1565C0", fg: "#ffffff" },
@@ -179,7 +178,7 @@
     const statusDot     = document.getElementById("status-dot");
     const statusLabel   = document.getElementById("status-label");
 
-    const laneAvailable = [true, true, true];
+    const laneAvailable = [true, true];
     const messageQueue  = [];
     const scQueue       = [];
     let scBusy          = false;
@@ -213,7 +212,7 @@
       });
     }
 
-    function addBubble(laneIndex, text, color) {
+    function addBubble(laneIndex, text, color, queueLen = 0) {
       laneAvailable[laneIndex] = false;
       const lane   = lanes[laneIndex];
       const bubble = document.createElement("div");
@@ -222,28 +221,40 @@
       bubble.style.color      = color;
       bubble.style.background = hexToRgba(color, 0.15);
 
-      const approxWidth      = text.length * 17;
-      const duration         = (1920 + approxWidth) / SPEED;
+      // DOMに追加してから実際の幅を計測
+      lane.appendChild(bubble);
+      const actualWidth      = bubble.scrollWidth;
+      const speed            = queueLen <= 0  ? 300
+                             : queueLen <= 7  ? 360
+                             : queueLen <= 15 ? 400
+                             : queueLen <= 22 ? 430
+                             :                  450; // 5段階（キュー: 0→300 / 7→360 / 15→400 / 22→430 / 23+→450 px/秒）
+      const duration         = (1920 + actualWidth) / speed;
       bubble.style.animation = `scroll-left ${duration}s linear forwards`;
+
+      // テールがスクリーン右端を抜けたらレーンを解放（次のコメントを即流せる）
+      setTimeout(() => {
+        laneAvailable[laneIndex] = true;
+        tryAssign();
+      }, ((actualWidth + GAP_PX) / speed) * 1000);
 
       bubble.addEventListener("animationend", () => {
         lane.removeChild(bubble);
-        laneAvailable[laneIndex] = true;
-        tryAssign();
-      });
-
-      lane.appendChild(bubble);
+      }, { once: true });
     }
 
     function tryAssign() {
       if (scBusy || messageQueue.length === 0) return;
-      const idx = laneAvailable.findIndex(v => v);
-      if (idx === -1) return;
-      const msg = messageQueue.shift();
-      addBubble(idx, msg.text, msg.color);
+      const available = laneAvailable.reduce((acc, v, i) => { if (v) acc.push(i); return acc; }, []);
+      if (available.length === 0) return;
+      const idx      = available[Math.floor(Math.random() * available.length)];
+      const queueLen = messageQueue.length; // shift前に計測（速度計算の精度向上）
+      const msg      = messageQueue.shift();
+      addBubble(idx, msg.text, msg.color, queueLen);
     }
 
     function enqueue(text, color) {
+      if (messageQueue.length >= MAX_QUEUE) messageQueue.shift();
       messageQueue.push({ text, color });
       tryAssign();
     }
@@ -298,6 +309,8 @@
             enqueue(data.message, THANKS_COLOR);
             return;
           }
+
+          if (data.type === "chat_candidate") return;
 
           if (!data.author) return;
 
