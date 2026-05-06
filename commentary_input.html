@@ -155,27 +155,23 @@
 
     .btn-pick {
       flex-shrink: 0;
+      min-width: 56px;
       padding: 5px 10px;
       border-radius: 6px;
-      border: 1px solid var(--navy);
-      color: #8899cc;
-      background: var(--surface);
-      font-size: 13px;
+      border: 2px solid var(--navy);
+      color: var(--navy);
+      background: transparent;
+      font-size: 12px;
+      font-weight: bold;
       cursor: pointer;
-      transition: background 0.1s, color 0.1s, border-color 0.1s;
+      transition: background 0.15s, color 0.15s;
     }
 
-    .btn-pick:active { background: var(--navy); color: #fff; }
-
-    .btn-pick.sent-flash {
-      border-color: var(--green);
-      color: var(--green);
-    }
+    .btn-pick:active { opacity: 0.7; }
 
     .btn-pick.active {
       background: var(--navy);
       color: #fff;
-      border-color: var(--navy);
     }
 
     #pickup-empty {
@@ -249,8 +245,21 @@
     const pickupList  = document.getElementById("pickup-list");
     const pickupEmpty = document.getElementById("pickup-empty");
 
-    let pinnedKey = null; // 現在ピン留め中のコメントキー
-    let pinnedBtn = null; // 現在 active 状態のボタン
+    let pinnedKey = null;
+    let pinnedBtn = null;
+    const btnByKey = new Map(); // key → button element（ws 受信時の逆引き用）
+
+    function setActiveBtn(btn) {
+      if (pinnedBtn) {
+        pinnedBtn.classList.remove("active");
+        pinnedBtn.textContent = "表示";
+      }
+      pinnedBtn = btn;
+      if (btn) {
+        btn.classList.add("active");
+        btn.textContent = "表示中";
+      }
+    }
 
     function addCandidate(data) {
       if (pickupEmpty.parentNode) pickupEmpty.remove();
@@ -275,23 +284,22 @@
 
       const btn = document.createElement("button");
       btn.className = "btn-pick";
-      btn.textContent = "▶";
+      btn.textContent = "表示";
+      btnByKey.set(key, btn);
+
       btn.onclick = () => {
         if (pinnedKey === key) {
           // 同じコメントを再タップ → OFF
           send({ type: "cmd", action: "pin_chat", data: null });
           pinnedKey = null;
-          pinnedBtn = null;
-          btn.classList.remove("active");
+          setActiveBtn(null);
         } else {
-          // 別のコメントをタップ → 前の active を外して ON
-          if (pinnedBtn) pinnedBtn.classList.remove("active");
+          // 別のコメントをタップ → ON（前の active は setActiveBtn 内で解除）
           send({ type: "cmd", action: "pin_chat", data: {
-            author: data.author, message: data.message, color_index: data.color_index,
+            key, author: data.author, message: data.message, color_index: data.color_index,
           }});
           pinnedKey = key;
-          pinnedBtn = btn;
-          btn.classList.add("active");
+          setActiveBtn(btn);
         }
       };
 
@@ -308,7 +316,14 @@
       ws.onmessage = (e) => {
         try {
           const data = JSON.parse(e.data);
-          if (data.type === "chat_candidate") addCandidate(data);
+          if (data.type === "chat_candidate") {
+            addCandidate(data);
+          } else if (data.type === "pin_chat") {
+            // 他クライアントや再接続後の状態同期
+            const key = data.data?.key ?? null;
+            pinnedKey = key;
+            setActiveBtn(key ? (btnByKey.get(key) ?? null) : null);
+          }
         } catch (_) {}
       };
     }
