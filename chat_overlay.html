@@ -24,43 +24,6 @@
       user-select: none;
     }
 
-    /* ニコニコ 3 レーン（y=810〜y=1030） */
-    #lanes {
-      position: absolute;
-      left: 0;
-      right: 0;
-      top: 810px;
-      height: 220px;
-    }
-
-    .lane {
-      position: absolute;
-      left: 0;
-      right: 0;
-      height: 110px;
-      overflow: hidden;
-    }
-
-    .lane:nth-child(1) { top: 0px; }
-    .lane:nth-child(2) { top: 110px; }
-
-    /* スクロールするコメントバブル */
-    .bubble {
-      position: absolute;
-      top: 50%;
-      white-space: nowrap;
-      padding: 4px 14px;
-      border-radius: 20px;
-      font-size: 40px;
-      font-weight: bold;
-      line-height: 1;
-    }
-
-    @keyframes scroll-left {
-      from { transform: translateY(-50%) translateX(1920px); }
-      to   { transform: translateY(-50%) translateX(-100%); }
-    }
-
     /* ピン留めコメント */
     #pinned-chat {
       position: absolute;
@@ -128,10 +91,6 @@
 </head>
 <body>
   <div id="app">
-    <div id="lanes">
-      <div class="lane"></div>
-      <div class="lane"></div>
-    </div>
     <div id="pinned-chat"></div>
     <div id="superchat-overlay">
       <div id="superchat-card"></div>
@@ -149,10 +108,6 @@
       "#CC0000", "#CC5500", "#AA7700", "#007700",
       "#007799", "#4400AA", "#880088"
     ];
-
-    const THANKS_COLOR  = "#002366";
-    const MAX_QUEUE     = 30;  // キュー上限（超えたら古いものを捨てる）
-    const GAP_PX        = 200; // コメント間の最小隙間（px）
 
     const SC_TIERS = [
       { max:      199, bg: "#1565C0", fg: "#ffffff" },
@@ -189,18 +144,15 @@
         .replace(/"/g, "&quot;");
     }
 
-    const lanes         = Array.from(document.querySelectorAll(".lane"));
-    const scOverlay     = document.getElementById("superchat-overlay");
-    const scCard        = document.getElementById("superchat-card");
-    const pinnedChat    = document.getElementById("pinned-chat");
-    const statusDot     = document.getElementById("status-dot");
-    const statusLabel   = document.getElementById("status-label");
+    const scOverlay   = document.getElementById("superchat-overlay");
+    const scCard      = document.getElementById("superchat-card");
+    const pinnedChat  = document.getElementById("pinned-chat");
+    const statusDot   = document.getElementById("status-dot");
+    const statusLabel = document.getElementById("status-label");
 
-    const laneAvailable = [true, true];
-    const messageQueue  = [];
-    const scQueue       = [];
-    let scBusy          = false;
-    let reconnectTimer  = null;
+    const scQueue      = [];
+    let scBusy         = false;
+    let reconnectTimer = null;
 
     function setStatus(online, chatOn = false) {
       if (!online) {
@@ -218,68 +170,8 @@
       }
     }
 
-    function pauseLanes() {
-      document.querySelectorAll(".bubble").forEach(b => {
-        b.style.animationPlayState = "paused";
-      });
-    }
-
-    function resumeLanes() {
-      document.querySelectorAll(".bubble").forEach(b => {
-        b.style.animationPlayState = "running";
-      });
-    }
-
-    function addBubble(laneIndex, text, color, queueLen = 0) {
-      laneAvailable[laneIndex] = false;
-      const lane   = lanes[laneIndex];
-      const bubble = document.createElement("div");
-      bubble.className        = "bubble";
-      bubble.textContent      = text;
-      bubble.style.color      = color;
-      bubble.style.background = hexToRgba(color, 0.15);
-
-      // DOMに追加してから実際の幅を計測
-      lane.appendChild(bubble);
-      const actualWidth      = bubble.scrollWidth;
-      const speed            = queueLen <= 0  ? 300
-                             : queueLen <= 7  ? 360
-                             : queueLen <= 15 ? 400
-                             : queueLen <= 22 ? 430
-                             :                  450; // 5段階（キュー: 0→300 / 7→360 / 15→400 / 22→430 / 23+→450 px/秒）
-      const duration         = (1920 + actualWidth) / speed;
-      bubble.style.animation = `scroll-left ${duration}s linear forwards`;
-
-      // テールがスクリーン右端を抜けたらレーンを解放（次のコメントを即流せる）
-      setTimeout(() => {
-        laneAvailable[laneIndex] = true;
-        tryAssign();
-      }, ((actualWidth + GAP_PX) / speed) * 1000);
-
-      bubble.addEventListener("animationend", () => {
-        lane.removeChild(bubble);
-      }, { once: true });
-    }
-
-    function tryAssign() {
-      if (scBusy || messageQueue.length === 0) return;
-      const available = laneAvailable.reduce((acc, v, i) => { if (v) acc.push(i); return acc; }, []);
-      if (available.length === 0) return;
-      const idx      = available[Math.floor(Math.random() * available.length)];
-      const queueLen = messageQueue.length; // shift前に計測（速度計算の精度向上）
-      const msg      = messageQueue.shift();
-      addBubble(idx, msg.text, msg.color, queueLen);
-    }
-
-    function enqueue(text, color) {
-      if (messageQueue.length >= MAX_QUEUE) messageQueue.shift();
-      messageQueue.push({ text, color });
-      tryAssign();
-    }
-
     function showScCard(sc) {
       scBusy = true;
-      pauseLanes();
 
       const { bg, fg } = scTier(sc.amount);
       const duration   = scDuration(sc.amount);
@@ -295,14 +187,7 @@
       setTimeout(() => {
         scOverlay.style.display = "none";
         scBusy = false;
-        resumeLanes();
-
-        // 感謝メッセージを空きレーンへ
-        enqueue(`${sc.author}さんありがとう。by国井精一`, THANKS_COLOR);
-
-        if (scQueue.length > 0) {
-          showScCard(scQueue.shift());
-        }
+        if (scQueue.length > 0) showScCard(scQueue.shift());
       }, duration);
     }
 
@@ -323,11 +208,6 @@
             return;
           }
 
-          if (data.type === "stats") {
-            enqueue(data.message, THANKS_COLOR);
-            return;
-          }
-
           if (data.type === "chat_candidate") return;
 
           if (data.type === "pin_chat") {
@@ -343,24 +223,15 @@
             return;
           }
 
-          if (!data.author) return;
-
-          const color = COLORS[data.color_index ?? 0];
-
-          if (data.superchat) {
+          if (data.superchat && data.author) {
             const sc = {
               author:   data.author,
               message:  data.message,
               amount:   data.superchat.amount,
               currency: data.superchat.currency,
             };
-            if (scBusy) {
-              scQueue.push(sc);
-            } else {
-              showScCard(sc);
-            }
-          } else {
-            enqueue(`${data.author}: ${data.message}`, color);
+            if (scBusy) scQueue.push(sc);
+            else showScCard(sc);
           }
         } catch (e) { console.warn(e); }
       };
