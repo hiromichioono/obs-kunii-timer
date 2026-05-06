@@ -162,6 +162,12 @@
                 pinnedChat.appendChild(authorEl);
                 pinnedChat.appendChild(document.createTextNode(" " + displayMsg));
               }
+              // bottom: >180文字 → 5px(y=1075), ≤180 → 85px(y=995)
+              //   最悪ケース上端: SC 139-180文字 → y=768px（配信エリア上限 y=750 内に収まる）
+              // right: >260文字 → 20px(幅1880px), ≤260 → 520px(幅1380px)
+              //   通常コメント全ケース上端 ≥ 825px ✓ / SC全ケース上端 ≥ 768px ✓
+              pinnedChat.style.bottom  = displayMsg.length > 180 ? "5px"   : "85px";
+              pinnedChat.style.right   = displayMsg.length > 260 ? "20px"  : "520px";
               pinnedChat.style.display = "block";
             } else {
               pinnedChat.style.display = "none";
