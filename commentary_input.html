@@ -292,6 +292,7 @@
       for (const [thresh, color] of SC_TIERS) {
         if (amount >= thresh) return color;
       }
+      return SC_TIERS[SC_TIERS.length - 1][1];
     }
     function scMaxLen(amount) {
       for (const [thresh, len] of SC_MAX_LEN) {
