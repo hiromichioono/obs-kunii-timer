@@ -23,6 +23,7 @@ WS_PORT           = 8765  # WebSocket サーバーポート
 HTTP_PORT         = 8080  # HTTP サーバーポート
 CHAT_COOLDOWN     = 30    # 同一ユーザーの連投制限（秒）
 CHAT_COLOR_COUNT  = 7     # チャット色の種類数
+CHAT_COLORS = ["#00E676","#C6FF00","#AA00FF","#FF7043","#40C4FF","#FF80AB","#64FFDA"]
 
 # --- ログ設定 ---
 now = datetime.datetime.now()
@@ -30,6 +31,11 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 LOG_DIR = os.path.join(BASE_DIR, "logs", now.strftime('%Y'), now.strftime('%Y_%m'))
 os.makedirs(LOG_DIR, exist_ok=True)
 filename = os.path.join(LOG_DIR, f"chat_log_{now.strftime('%Y%m%d_%H%M')}.txt")
+
+# 起動時に空ログを掃除（前回の強制終了で残ったファイルを削除）
+for _f in os.scandir(LOG_DIR):
+    if _f.name.endswith(".txt") and _f.stat().st_size == 0:
+        os.remove(_f.path)
 
 SESSION_SALT = str(random.randint(0, 999999))
 
@@ -50,6 +56,7 @@ class AppState:
     connected_clients: set = field(default_factory=set)
     last_message_time: dict = field(default_factory=dict)
     seen_channels: set = field(default_factory=set)    # 初コメ検出
+    pin_state: dict | None = None                       # ピン留めコメント
     comment_counts: dict = field(default_factory=dict)  # コメント数集計
     total_comments: int = 0                             # 配信全体コメント総数
 
@@ -230,6 +237,8 @@ async def handler(websocket):
     # 接続直後に現在の状態を送信（新規クライアントのみ）
     await websocket.send(_timer_state_msg())
     await websocket.send(json.dumps({"type": "commentary", **state.commentary}))
+    if state.pin_state is not None:
+        await websocket.send(json.dumps({"type": "pin_chat", "data": state.pin_state}, ensure_ascii=False))
     try:
         async for message in websocket:
             try:
@@ -277,6 +286,10 @@ async def handler(websocket):
                         await broadcast(json.dumps({"type": "anim_goal"}))
                     elif action == "pin_chat":
                         pin_data = data.get("data")
+                        if pin_data and "bg_color" not in pin_data:
+                            idx = (pin_data.get("color_index") or 0) % CHAT_COLOR_COUNT
+                            pin_data["bg_color"] = CHAT_COLORS[idx]
+                        state.pin_state = pin_data
                         await broadcast(json.dumps({"type": "pin_chat", "data": pin_data}, ensure_ascii=False))
                     elif action == "test_comment":
                         msg = {"type": "chat_candidate", "author": "テスト太郎", "message": data.get("message", "テストコメントです！"), "datetime": str(datetime.datetime.now()), "color_index": random.randint(0, 6)}
