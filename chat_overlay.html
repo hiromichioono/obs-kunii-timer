@@ -121,7 +121,6 @@
           if (data.type === "pin_chat") {
             if (data.data) {
               const { author, message, bg_color, superchat } = data.data;
-              const displayMsg = message;
               pinnedChat.replaceChildren();
               if (superchat) {
                 // YouTube スタイル: ヘッダー（著者＋金額）＋ボディ（メッセージ）
@@ -144,10 +143,10 @@
                 header.appendChild(badge);
                 pinnedChat.appendChild(header);
 
-                if (displayMsg) {
+                if (message) {
                   const body = document.createElement("div");
                   body.style.cssText = `background:${bg_color};padding:8px 14px;color:${textColor};`;
-                  body.textContent = displayMsg;
+                  body.textContent = message;
                   pinnedChat.appendChild(body);
                 }
               } else {
@@ -160,14 +159,14 @@
                 authorEl.style.cssText = `font-weight:bold;color:${bg_color};`;
                 authorEl.textContent = author + ":";
                 pinnedChat.appendChild(authorEl);
-                pinnedChat.appendChild(document.createTextNode(" " + displayMsg));
+                pinnedChat.appendChild(document.createTextNode(" " + message));
               }
               // bottom: >180文字 → 5px(y=1075), ≤180 → 85px(y=995)
               //   最悪ケース上端: SC 139-180文字 → y=768px（配信エリア上限 y=750 内に収まる）
               // right: >260文字 → 20px(幅1880px), ≤260 → 520px(幅1380px)
               //   通常コメント全ケース上端 ≥ 825px ✓ / SC全ケース上端 ≥ 768px ✓
-              pinnedChat.style.bottom  = displayMsg.length > 180 ? "5px"   : "85px";
-              pinnedChat.style.right   = displayMsg.length > 260 ? "20px"  : "520px";
+              pinnedChat.style.bottom  = message.length > 180 ? "5px"   : "85px";
+              pinnedChat.style.right   = message.length > 260 ? "20px"  : "520px";
               pinnedChat.style.display = "block";
             } else {
               pinnedChat.style.display = "none";
