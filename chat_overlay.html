@@ -40,36 +40,6 @@
       display: none;
     }
 
-    /* スパチャオーバーレイ */
-    #superchat-overlay {
-      position: absolute;
-      left: 20px;
-      right: 20px;
-      top: 810px;
-      height: 250px;
-      display: none;
-      align-items: center;
-      justify-content: center;
-    }
-
-    #superchat-card {
-      padding: 16px 28px;
-      border-radius: 16px;
-      min-width: 400px;
-      max-width: 820px;
-      text-align: center;
-      animation: sc-in 0.3s ease-out;
-    }
-
-    @keyframes sc-in {
-      from { opacity: 0; transform: scale(0.92); }
-      to   { opacity: 1; transform: scale(1); }
-    }
-
-    .sc-amount  { font-size: 18px; font-weight: bold; margin-bottom: 4px; }
-    .sc-author  { font-size: 26px; font-weight: bold; margin-bottom: 8px; }
-    .sc-message { font-size: 20px; line-height: 1.4; white-space: pre-wrap; word-break: break-all; }
-
     /* 接続ステータス */
     #status {
       position: absolute;
@@ -92,9 +62,6 @@
 <body>
   <div id="app">
     <div id="pinned-chat"></div>
-    <div id="superchat-overlay">
-      <div id="superchat-card"></div>
-    </div>
     <div id="status">
       <div id="status-dot" class="disconnected"></div>
       <span id="status-label" class="label-off">OFFLINE</span>
@@ -109,26 +76,6 @@
       "#007799", "#4400AA", "#880088"
     ];
 
-    const SC_TIERS = [
-      { max:      199, bg: "#1565C0", fg: "#ffffff" },
-      { max:      499, bg: "#00BCD4", fg: "#000000" },
-      { max:      999, bg: "#1DE9B6", fg: "#000000" },
-      { max:     1999, bg: "#FFCA28", fg: "#000000" },
-      { max:     4999, bg: "#F57C00", fg: "#ffffff" },
-      { max:    49999, bg: "#E91E63", fg: "#ffffff" },
-      { max: Infinity, bg: "#E53935", fg: "#ffffff" },
-    ];
-
-    function scTier(amount) {
-      return SC_TIERS.find(t => amount <= t.max) || SC_TIERS[SC_TIERS.length - 1];
-    }
-
-    function scDuration(amount) {
-      if (amount >= 5000) return 10000;
-      if (amount >= 1000) return 7000;
-      return 5000;
-    }
-
     function hexToRgba(hex, alpha) {
       const r = parseInt(hex.slice(1, 3), 16);
       const g = parseInt(hex.slice(3, 5), 16);
@@ -136,22 +83,10 @@
       return `rgba(${r},${g},${b},${alpha})`;
     }
 
-    function escapeHtml(str) {
-      return String(str)
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;");
-    }
-
-    const scOverlay   = document.getElementById("superchat-overlay");
-    const scCard      = document.getElementById("superchat-card");
     const pinnedChat  = document.getElementById("pinned-chat");
     const statusDot   = document.getElementById("status-dot");
     const statusLabel = document.getElementById("status-label");
 
-    const scQueue      = [];
-    let scBusy         = false;
     let reconnectTimer = null;
 
     function setStatus(online, chatOn = false) {
@@ -168,27 +103,6 @@
         statusLabel.className   = "label-on";
         statusLabel.textContent = "CONNECTED";
       }
-    }
-
-    function showScCard(sc) {
-      scBusy = true;
-
-      const { bg, fg } = scTier(sc.amount);
-      const duration   = scDuration(sc.amount);
-
-      scCard.style.background = bg;
-      scCard.innerHTML =
-        `<div class="sc-amount" style="color:${fg}">${escapeHtml(sc.currency)}${sc.amount}</div>` +
-        `<div class="sc-author"  style="color:${fg}">${escapeHtml(sc.author)}</div>` +
-        (sc.message ? `<div class="sc-message" style="color:${fg}">${escapeHtml(sc.message)}</div>` : "");
-
-      scOverlay.style.display = "flex";
-
-      setTimeout(() => {
-        scOverlay.style.display = "none";
-        scBusy = false;
-        if (scQueue.length > 0) showScCard(scQueue.shift());
-      }, duration);
     }
 
     function connect() {
@@ -221,17 +135,6 @@
               pinnedChat.style.display = "none";
             }
             return;
-          }
-
-          if (data.superchat && data.author) {
-            const sc = {
-              author:   data.author,
-              message:  data.message,
-              amount:   data.superchat.amount,
-              currency: data.superchat.currency,
-            };
-            if (scBusy) scQueue.push(sc);
-            else showScCard(sc);
           }
         } catch (e) { console.warn(e); }
       };
