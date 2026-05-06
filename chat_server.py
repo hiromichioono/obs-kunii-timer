@@ -275,16 +275,9 @@ async def handler(websocket):
                         await websocket.send(json.dumps({"type": "streams", "items": items}))
                     elif action == "anim_goal":
                         await broadcast(json.dumps({"type": "anim_goal"}))
-                    elif action == "pick_chat":
-                        payload = {
-                            "author":      data.get("author", ""),
-                            "message":     data.get("message", ""),
-                            "datetime":    data.get("datetime", ""),
-                            "color_index": data.get("color_index", 0),
-                        }
-                        if "superchat" in data:
-                            payload["superchat"] = data["superchat"]
-                        await broadcast(json.dumps(payload, ensure_ascii=False))
+                    elif action == "pin_chat":
+                        pin_data = data.get("data")
+                        await broadcast(json.dumps({"type": "pin_chat", "data": pin_data}, ensure_ascii=False))
                     elif action == "test_comment":
                         msg = {"type": "chat_candidate", "author": "テスト太郎", "message": data.get("message", "テストコメントです！"), "datetime": str(datetime.datetime.now()), "color_index": random.randint(0, 6)}
                         await broadcast(json.dumps(msg, ensure_ascii=False))

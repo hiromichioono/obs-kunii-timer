@@ -172,6 +172,12 @@
       color: var(--green);
     }
 
+    .btn-pick.active {
+      background: var(--navy);
+      color: #fff;
+      border-color: var(--navy);
+    }
+
     #pickup-empty {
       font-size: 12px;
       color: #aaa;
@@ -243,9 +249,13 @@
     const pickupList  = document.getElementById("pickup-list");
     const pickupEmpty = document.getElementById("pickup-empty");
 
+    let pinnedKey = null; // 現在ピン留め中のコメントキー
+    let pinnedBtn = null; // 現在 active 状態のボタン
+
     function addCandidate(data) {
       if (pickupEmpty.parentNode) pickupEmpty.remove();
 
+      const key  = data.author + ":" + data.datetime;
       const item = document.createElement("div");
       item.className = "pickup-item" + (data.superchat ? " sc" : "");
 
@@ -267,12 +277,22 @@
       btn.className = "btn-pick";
       btn.textContent = "▶";
       btn.onclick = () => {
-        send({ type: "cmd", action: "pick_chat",
-               author: data.author, message: data.message,
-               datetime: data.datetime, color_index: data.color_index,
-               ...(data.superchat ? { superchat: data.superchat } : {}) });
-        btn.classList.add("sent-flash");
-        setTimeout(() => btn.classList.remove("sent-flash"), 600);
+        if (pinnedKey === key) {
+          // 同じコメントを再タップ → OFF
+          send({ type: "cmd", action: "pin_chat", data: null });
+          pinnedKey = null;
+          pinnedBtn = null;
+          btn.classList.remove("active");
+        } else {
+          // 別のコメントをタップ → 前の active を外して ON
+          if (pinnedBtn) pinnedBtn.classList.remove("active");
+          send({ type: "cmd", action: "pin_chat", data: {
+            author: data.author, message: data.message, color_index: data.color_index,
+          }});
+          pinnedKey = key;
+          pinnedBtn = btn;
+          btn.classList.add("active");
+        }
       };
 
       item.appendChild(text);
