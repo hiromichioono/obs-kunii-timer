@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>Chat Feed</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: transparent;
+      overflow: hidden;
+      font-family: sans-serif;
+    }
+
+    #app {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      user-select: none;
+    }
+
+    #chat-feed {
+      position: absolute;
+      left: 20px;
+      right: 520px;
+      bottom: 80px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .chat-item {
+      background: rgba(255, 255, 255, 0.85);
+      color: #111827;
+      padding: 8px 10px;
+      border-radius: 6px;
+      border: 1px solid;
+      font-size: 20px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      animation: chat-slide-in 0.35s ease;
+    }
+
+    .chat-author {
+      font-weight: bold;
+    }
+
+    .chat-item-out {
+      animation: chat-fade-out 0.3s ease forwards;
+    }
+
+    @keyframes chat-slide-in {
+      from { transform: translateY(24px); opacity: 0; }
+      to   { transform: translateY(0);    opacity: 1; }
+    }
+
+    @keyframes chat-fade-out {
+      from { opacity: 1; }
+      to   { opacity: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div id="chat-feed"></div>
+  </div>
+
+  <script>
+    const WS_URL      = `ws://${location.hostname || "localhost"}:8765`;
+    const CHAT_COLORS = ["#00E676","#C6FF00","#AA00FF","#FF7043","#40C4FF","#FF80AB","#64FFDA"];
+    const MAX_FEED    = 3;
+
+    const chatFeed = document.getElementById("chat-feed");
+
+    let reconnectTimer = null;
+    const feedItems = [];
+
+    function addChatItem({ author, message, color_index, superchat }) {
+      const color = CHAT_COLORS[(color_index ?? 0) % CHAT_COLORS.length];
+
+      const item = document.createElement("div");
+      item.className = "chat-item";
+      item.style.borderColor = color;
+
+      const authorEl = document.createElement("span");
+      authorEl.className   = "chat-author";
+      authorEl.style.color = color;
+      authorEl.textContent = superchat
+        ? `${author} (${superchat.currency}${superchat.amount}): `
+        : `${author}: `;
+      item.appendChild(authorEl);
+      item.appendChild(document.createTextNode(message));
+
+      chatFeed.appendChild(item);
+      feedItems.push(item);
+
+      while (feedItems.length > MAX_FEED) {
+        const oldest = feedItems.shift();
+        oldest.classList.add("chat-item-out");
+        oldest.addEventListener("animationend", () => oldest.remove(), { once: true });
+        setTimeout(() => oldest.remove(), 500);
+      }
+    }
+
+    function connect() {
+      const ws = new WebSocket(WS_URL);
+
+      ws.onopen  = () => clearTimeout(reconnectTimer);
+
+      ws.onmessage = (e) => {
+        try {
+          const data = JSON.parse(e.data);
+          if (data.type === "chat_candidate") {
+            addChatItem(data);
+          }
+        } catch (err) { console.warn(err); }
+      };
+
+      ws.onclose = () => {
+        reconnectTimer = setTimeout(connect, 3000);
+      };
+
+      ws.onerror = () => ws.close();
+    }
+
+    connect();
+  </script>
+</body>
+</html>
