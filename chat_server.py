@@ -287,7 +287,8 @@ async def handler(websocket):
                     elif action == "pin_chat":
                         pin_data = data.get("data")
                         if pin_data and "bg_color" not in pin_data:
-                            idx = (pin_data.get("color_index") or 0) % CHAT_COLOR_COUNT
+                            ci = pin_data.get("color_index")
+                            idx = (ci if ci is not None else 0) % CHAT_COLOR_COUNT
                             pin_data["bg_color"] = CHAT_COLORS[idx]
                         state.pin_state = pin_data
                         await broadcast(json.dumps({"type": "pin_chat", "data": pin_data}, ensure_ascii=False))
